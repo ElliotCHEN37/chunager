@@ -46,7 +46,7 @@ class AboutPage(QWidget):
         licenseLabel = CaptionLabel(
             "\n免責聲明：\n"
             "本程式為個人非官方開發，與 SEGA 及 CHUNITHM 官方團隊無任何關係。\n"
-            "本程式僅供學術研究及個人學習用途，禁止用於跳臉世嘉。\n"
+            '本程式使用MIT授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。\n'
             "使用本程式所造成的一切後果，作者不負任何責任。"
         )
         licenseFont = QFont()
@@ -54,6 +54,9 @@ class AboutPage(QWidget):
         licenseLabel.setFont(licenseFont)
         licenseLabel.setAlignment(Qt.AlignLeft)
         licenseLabel.setWordWrap(True)
+        licenseLabel.setTextFormat(Qt.RichText)
+        licenseLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        licenseLabel.setOpenExternalLinks(True)
 
         layout.addWidget(titleLabel)
         layout.addSpacing(10)

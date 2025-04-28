@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel
+from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
 import webbrowser
 
 class PFMManualPage(QWidget):
@@ -23,14 +23,22 @@ class PFMManualPage(QWidget):
         openButton.clicked.connect(self.open_manual)
 
         notice = HeaderCardWidget()
+
         notice.setTitle("WOOPS")
+        notice.ErrorIcon = IconWidget(QIcon("./img/error.svg"))
         notice.infoLabel = BodyLabel("由於某些技術原因，暫時不支援內嵌網站")
+
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()
+
+        notice.ErrorIcon.setFixedSize(16, 16)
         notice.hBoxLayout.setSpacing(10)
         notice.vBoxLayout.setSpacing(16)
+
         notice.hBoxLayout.setContentsMargins(0, 0, 0, 0)
         notice.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+
+        notice.hBoxLayout.addWidget(notice.ErrorIcon)
         notice.hBoxLayout.addWidget(notice.infoLabel)
         notice.vBoxLayout.addLayout(notice.hBoxLayout)
         notice.viewLayout.addLayout(notice.vBoxLayout)

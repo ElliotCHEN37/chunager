@@ -1,4 +1,4 @@
-from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel
+from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
@@ -24,14 +24,22 @@ class UnlockerPage(QWidget):
         unlockerButton.clicked.connect(self.launch_unlocker)
 
         notice = HeaderCardWidget()
+
         notice.setTitle("警告")
-        notice.infoLabel = BodyLabel("Unlocker並非由本人編寫，如有疑慮請勿使用。")
+        notice.ErrorIcon = IconWidget(QIcon("./img/error.svg"))
+        notice.infoLabel = BodyLabel("Unlocker 並非由本人編寫，如有疑慮請勿使用")
+
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()
+
+        notice.ErrorIcon.setFixedSize(16, 16)
         notice.hBoxLayout.setSpacing(10)
         notice.vBoxLayout.setSpacing(16)
+
         notice.hBoxLayout.setContentsMargins(0, 0, 0, 0)
         notice.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+
+        notice.hBoxLayout.addWidget(notice.ErrorIcon)
         notice.hBoxLayout.addWidget(notice.infoLabel)
         notice.vBoxLayout.addLayout(notice.hBoxLayout)
         notice.viewLayout.addLayout(notice.vBoxLayout)

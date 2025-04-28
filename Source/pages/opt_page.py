@@ -1,10 +1,10 @@
 import configparser
 import os
+import shutil
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox
 from PySide6.QtCore import Qt
-from qfluentwidgets import TableWidget, LargeTitleLabel
-
+from qfluentwidgets import TableWidget, LargeTitleLabel, PrimaryPushButton
 
 class OptPage(QWidget):
     def __init__(self):
@@ -14,7 +14,7 @@ class OptPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = LargeTitleLabel("補丁管理")
+        titleLabel = LargeTitleLabel("OPT管理")
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)
@@ -22,8 +22,8 @@ class OptPage(QWidget):
         titleLabel.setAlignment(Qt.AlignLeft)
 
         self.table = TableWidget(self)
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["資料夾", "類型", "版本"])
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["資料夾", "類型", "版本", "操作"])
         self.table.horizontalHeader().setStretchLastSection(True)
 
         layout.addWidget(titleLabel)
@@ -32,6 +32,9 @@ class OptPage(QWidget):
         self.load_opt_data()
 
     def load_opt_data(self):
+        self.table.clearContents()
+        self.table.setRowCount(0)
+
         config = configparser.ConfigParser()
         config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
         config.read(config_path)
@@ -65,8 +68,9 @@ class OptPage(QWidget):
             folder_list.append(a000)
 
         for f in os.listdir(opt_dir):
-            if f.startswith('A') and os.path.isdir(os.path.join(opt_dir, f)):
-                folder_list.append(os.path.join(opt_dir, f))
+            full_path = os.path.join(opt_dir, f)
+            if f.startswith('A') and os.path.isdir(full_path):
+                folder_list.append(full_path)
 
         self.table.setRowCount(len(folder_list))
 
@@ -83,6 +87,30 @@ class OptPage(QWidget):
             else:
                 self.table.setItem(row, 1, QTableWidgetItem("自製更新"))
                 self.table.setItem(row, 2, QTableWidgetItem("\\"))
+
+            delete_button = PrimaryPushButton("刪除", self)
+            delete_button.clicked.connect(lambda checked, path=folder_path, name=folder_name: self.confirm_delete_folder(path, name))
+            self.table.setCellWidget(row, 3, delete_button)
+
+    def confirm_delete_folder(self, path, folder_name):
+        reply = QMessageBox.warning(
+            self,
+            "確認刪除",
+            f"你確定要刪除資料夾「{folder_name}」嗎？此操作無法復原！",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.delete_folder(path)
+
+    def delete_folder(self, path):
+        if os.path.exists(path) and os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+                print(f"已刪除資料夾: {path}")
+                self.load_opt_data()  # 刷新表格
+            except Exception as e:
+                print(f"刪除失敗: {e}")
 
     def read_version_from_data_conf(self, conf_path):
         version_config = configparser.ConfigParser()

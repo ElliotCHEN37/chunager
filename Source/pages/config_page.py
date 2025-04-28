@@ -1,8 +1,12 @@
 import configparser
 import os
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QComboBox, QPushButton
+import webbrowser
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
+from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, PrimaryPushButton, Flyout, InfoBarIcon, \
+    FlyoutAnimationType
+
 
 class ConfigPage(QWidget):
     def __init__(self):
@@ -12,7 +16,7 @@ class ConfigPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = QLabel("設定")
+        titleLabel = TitleLabel("設定")
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)
@@ -21,13 +25,13 @@ class ConfigPage(QWidget):
 
         self.config = self.load_config()
 
-        auto_update_label = QLabel("啟用自動更新：")
-        self.auto_update_checkbox = QCheckBox(self)
-        self.auto_update_checkbox.setChecked(self.config.getboolean("GENERAL", "auto_update"))
-        self.auto_update_checkbox.stateChanged.connect(self.on_auto_update_changed)
+        update_label = StrongBodyLabel("檢查更新：")
+        self.update_button = PrimaryPushButton(QIcon("./img/web.svg"), "訪問GitHub發佈頁")
+        self.update_button.clicked.connect(self.open_github)
 
-        theme_label = QLabel("選擇主題：")
-        self.theme_combobox = QComboBox(self)
+
+        theme_label = StrongBodyLabel("選擇主題：")
+        self.theme_combobox = ComboBox(self)
         self.theme_combobox.addItem("AUTO")
         self.theme_combobox.addItem("DARK")
         self.theme_combobox.addItem("LIGHT")
@@ -35,18 +39,18 @@ class ConfigPage(QWidget):
         self.theme_combobox.setCurrentText(current_theme)
         self.theme_combobox.currentTextChanged.connect(self.on_theme_changed)
 
-        save_button = QPushButton("儲存設定", self)
-        save_button.clicked.connect(self.save_config)
+        self.save_button = PrimaryPushButton(QIcon("./img/save.svg"), "儲存設定")
+        self.save_button.clicked.connect(self.save_config)
 
         layout.addWidget(titleLabel)
         layout.addSpacing(10)
-        layout.addWidget(auto_update_label)
-        layout.addWidget(self.auto_update_checkbox)
+        layout.addWidget(update_label)
+        layout.addWidget(self.update_button)
         layout.addSpacing(10)
         layout.addWidget(theme_label)
         layout.addWidget(self.theme_combobox)
         layout.addSpacing(10)
-        layout.addWidget(save_button)
+        layout.addWidget(self.save_button)
 
     def load_config(self):
         config = configparser.ConfigParser()
@@ -57,15 +61,24 @@ class ConfigPage(QWidget):
         return config
 
     def save_config(self):
-        self.config.set("GENERAL", "auto_update", str(self.auto_update_checkbox.isChecked()))
         self.config.set("DISPLAY", "theme", self.theme_combobox.currentText())
 
         config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
         with open(config_path, "w") as configfile:
             self.config.write(configfile)
 
-    def on_auto_update_changed(self):
-        self.config.set("GENERAL", "auto_update", str(self.auto_update_checkbox.isChecked()))
+        Flyout.create(
+            icon=InfoBarIcon.SUCCESS,
+            title='完成',
+            content="所有選項已儲存，重新啟動後生效！",
+            target=self.save_button,
+            parent=self,
+            isClosable=True,
+            aniType=FlyoutAnimationType.PULL_UP
+        )
 
     def on_theme_changed(self):
         self.config.set("DISPLAY", "theme", self.theme_combobox.currentText())
+
+    def open_github(self):
+        webbrowser.open("https://github.com/ElliotCHEN37/chunager/releases")

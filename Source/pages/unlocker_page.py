@@ -1,7 +1,7 @@
-from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox, QHBoxLayout
+from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QHBoxLayout
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 import subprocess
 import os
 
@@ -13,14 +13,14 @@ class UnlockerPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = QLabel("解鎖工具")
+        titleLabel = LargeTitleLabel("解鎖工具")
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        unlockerButton = PrimaryPushButton("啟動 Unlocker")
+        unlockerButton = PrimaryPushButton(QIcon("./img/launch.svg"), "啟動 Unlocker")
         unlockerButton.clicked.connect(self.launch_unlocker)
 
         notice = HeaderCardWidget()

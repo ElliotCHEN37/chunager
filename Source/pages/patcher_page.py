@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel
+from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel
 import webbrowser
 
 class PatcherPage(QWidget):
@@ -12,7 +12,7 @@ class PatcherPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = QLabel("補丁管理")
+        titleLabel = LargeTitleLabel("補丁管理")
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)

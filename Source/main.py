@@ -1,3 +1,5 @@
+import configparser
+import os
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentWindow, setTheme, Theme, NavigationItemPosition
@@ -18,7 +20,19 @@ class MainWindow(FluentWindow):
         self.setWindowTitle("CHUNAGER")
         self.resize(1000, 750)
 
-        setTheme(Theme.AUTO)
+        self.config = configparser.ConfigParser()
+
+        self.config_path = os.path.join(os.path.dirname(__file__), ".", "config.ini")
+        self.config.read(self.config_path)
+
+        if self.config.get("DISPLAY", "theme") == "AUTO":
+            setTheme(Theme.AUTO)
+        elif self.config.get("DISPLAY", "theme") == "LIGHT":
+            setTheme(Theme.LIGHT)
+        elif self.config.get("DISPLAY", "theme") == "DARK":
+            setTheme(Theme.DARK)
+        else:
+            setTheme(Theme.AUTO)
 
         self.homePage = HomePage()
         self.optPage = OptPage()

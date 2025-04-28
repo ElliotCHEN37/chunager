@@ -1,11 +1,204 @@
+import os
+import re
+import shutil
+import xml.etree.ElementTree as ET
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QTableWidget, QLabel, QFileDialog
+from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qfluentwidgets import LargeTitleLabel, PushButton
+import configparser
+from PIL import Image
+
 
 class MusicPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("musicPage")
-        layout = QVBoxLayout(self)
-        label = QLabel("音樂管理", self)
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setAlignment(Qt.AlignTop)
+
+        self.titleLabel = LargeTitleLabel("樂曲管理")
+        self.layout.addWidget(self.titleLabel)
+
+        self.searchingLabel = QLabel("正在搜尋資料...", self)
+        self.searchingLabel.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.searchingLabel)
+
+        self.table = QTableWidget(self)
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels([
+            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "發行日期", "難度", "提取封面"
+        ])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.layout.addWidget(self.table)
+
+        self.load_music_data()
+
+    def load_music_data(self):
+        music_xml_paths = self.find_all_music_xmls()
+        self.table.setRowCount(len(music_xml_paths))
+
+        for row, xml_path in enumerate(music_xml_paths):
+            data = self.parse_music_xml(xml_path)
+
+            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
+            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
+            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
+            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])))
+            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
+            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
+            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
+
+            pixmap = self.load_dds_image(data["jacket_path"])
+            if pixmap is not None:
+                label = QLabel()
+                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.table.setCellWidget(row, 0, label)
+
+                self.table.setRowHeight(row, 128)
+                self.table.setColumnWidth(row, 128)
+
+            copy_button = PushButton("提取")
+            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
+            self.table.setCellWidget(row, 7, copy_button)
+
+        self.searchingLabel.hide()
+
+    def load_dds_image(self, dds_path):
+        if not os.path.exists(dds_path):
+            return None
+        try:
+            img = Image.open(dds_path)
+            img = img.convert("RGBA")
+            data = img.tobytes("raw", "RGBA")
+            qimage = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+            return QPixmap.fromImage(qimage)
+        except Exception as e:
+            print(f"讀取DDS封面失敗: {dds_path}，錯誤: {e}")
+            return None
+
+    def copy_cover_image(self, data):
+        target_folder = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
+
+        if target_folder:
+            if not os.path.exists(target_folder):
+                os.makedirs(target_folder)
+
+            if os.path.exists(data["jacket_path"]):
+                try:
+                    target_path = os.path.join(target_folder, os.path.basename(data["jacket_path"]))
+                    shutil.copy(data["jacket_path"], target_path)
+                    print(f"成功將封面複製到: {target_path}")
+                except Exception as e:
+                    print(f"複製封面失敗: {e}")
+            else:
+                print(f"封面檔案不存在: {data['jacket_path']}")
+        else:
+            print("未選擇任何資料夾")
+
+    def find_all_music_xmls(self):
+        result = []
+
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+        config.read(config_path)
+
+        segatools_path = config.get("GENERAL", "segatools_path", fallback=None)
+        if not segatools_path or not os.path.exists(segatools_path):
+            self.searchingLabel.setText("找不到 segatools.ini")
+            return result
+
+        segatools_config = configparser.ConfigParser()
+        segatools_config.read(segatools_path)
+
+        option_relative_path = segatools_config.get("vfs", "option", fallback=None)
+        if not option_relative_path:
+            self.searchingLabel.setText("找不到 [vfs] option 設定")
+            return result
+
+        if os.path.isabs(option_relative_path):
+            option_path = option_relative_path
+        else:
+            option_path = os.path.normpath(os.path.join(os.path.dirname(segatools_path), option_relative_path))
+
+        data_a000_path = os.path.normpath(os.path.join(os.path.dirname(segatools_path), "..", "data", "A000"))
+        if os.path.exists(data_a000_path):
+            self.searchingLabel.setText(f"正在搜尋：{data_a000_path}")
+            result.extend(self.find_music_xml_in_folder(data_a000_path))
+
+        if os.path.exists(option_path):
+            for f in os.listdir(option_path):
+                if f.startswith('A') and os.path.isdir(os.path.join(option_path, f)):
+                    a_folder = os.path.join(option_path, f)
+                    self.searchingLabel.setText(f"正在搜尋：{a_folder}")
+                    result.extend(self.find_music_xml_in_folder(option_path))
+
+        return result
+
+    def find_music_xml_in_folder(self, folder_path):
+        found = []
+        if not os.path.exists(folder_path):
+            return found
+
+        for a_folder in os.listdir(folder_path):
+            a_folder_path = os.path.join(folder_path, a_folder)
+            if not (os.path.isdir(a_folder_path) and a_folder.startswith("A")):
+                continue
+
+            music_root_path = os.path.join(a_folder_path, "music")
+            if not os.path.exists(music_root_path):
+                continue
+
+            for music_folder in os.listdir(music_root_path):
+                if re.match(r'^music\d+$', music_folder):
+                    music_folder_path = os.path.join(music_root_path, music_folder)
+                    music_xml_path = os.path.join(music_folder_path, "music.xml")
+                    if os.path.exists(music_xml_path):
+                        found.append(music_xml_path)
+
+        return found
+
+    def parse_music_xml(self, xml_path):
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+
+        def safe_find_text(path, default="未知"):
+            element = root.find(path)
+            return element.text if element is not None else default
+
+        music_id = safe_find_text(".//name/id")
+        music_name = safe_find_text(".//name/str")
+        artist_name = safe_find_text(".//artistName/str")
+        release_date_raw = safe_find_text(".//releaseDate", "00000000")
+        release_date = f"{release_date_raw[:4]}.{release_date_raw[4:6]}.{release_date_raw[6:8]}"
+
+        genre_names = []
+        for genre in root.findall(".//genreNames/list/StringID"):
+            genre_str = genre.find("str")
+            if genre_str is not None and genre_str.text:
+                genre_names.append(genre_str.text)
+
+        fumens = []
+        for fumen in root.findall(".//fumens/MusicFumenData"):
+            enable = fumen.find("enable")
+            if enable is not None and enable.text.lower() == "true":
+                fumen_type = fumen.findtext("./type/str", "未知")
+                level = fumen.findtext("./level", "未知")
+                fumens.append({
+                    "type": fumen_type,
+                    "level": level
+                })
+
+        jacket_filename = f"CHU_UI_Jacket_{int(music_id):04d}.dds"
+        jacket_abs_path = os.path.join(os.path.dirname(xml_path), jacket_filename)
+
+        return {
+            "jacket_path": jacket_abs_path,
+            "music_id": music_id,
+            "music_name": music_name,
+            "artist_name": artist_name,
+            "genre_names": genre_names,
+            "release_date": release_date,
+            "fumens": fumens
+        }

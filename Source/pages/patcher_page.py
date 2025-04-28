@@ -19,7 +19,7 @@ class PatcherPage(QWidget):
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        openButton = PrimaryPushButton(QIcon("img/web.svg"), "打開 CHUNITHM VERSE Modder")
+        openButton = PrimaryPushButton(QIcon("./img/web.svg"), "打開 CHUNITHM VERSE Modder")
         openButton.clicked.connect(self.open_manual)
 
         notice = HeaderCardWidget()

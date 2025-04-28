@@ -19,7 +19,7 @@ class PFMManualPage(QWidget):
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        openButton = PrimaryPushButton(QIcon("img/web.svg"), "打開 PERFORMAI MANUAL")
+        openButton = PrimaryPushButton(QIcon("./img/web.svg"), "打開 PERFORMAI MANUAL")
         openButton.clicked.connect(self.open_manual)
 
         notice = HeaderCardWidget()

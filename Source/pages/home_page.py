@@ -3,7 +3,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPixmap
 from qfluentwidgets import LargeTitleLabel
 
-
 class HomePage(QWidget):
     def __init__(self):
         super().__init__()
@@ -41,12 +40,6 @@ class HomePage(QWidget):
         authorLabel.setFont(authorFont)
         authorLabel.setAlignment(Qt.AlignCenter)
 
-        versionLabel = QLabel("版本：v1.0")
-        versionFont = QFont()
-        versionFont.setPointSize(11)
-        versionLabel.setFont(versionFont)
-        versionLabel.setAlignment(Qt.AlignCenter)
-
         layout.addWidget(logoLabel)
         layout.addSpacing(20)
         layout.addWidget(titleLabel)
@@ -54,4 +47,3 @@ class HomePage(QWidget):
         layout.addWidget(descriptionLabel)
         layout.addSpacing(10)
         layout.addWidget(authorLabel)
-        layout.addWidget(versionLabel)

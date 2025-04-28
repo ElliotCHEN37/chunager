@@ -33,15 +33,15 @@ class MainWindow(FluentWindow):
         self.initNavigation()
 
     def initNavigation(self):
-        self.addSubInterface(self.homePage, QIcon("img/home.svg"), "首頁")
-        self.addSubInterface(self.optPage, QIcon("img/opt.svg"), "OPT")
-        self.addSubInterface(self.musicPage, QIcon("img/music.svg"), "樂曲")
-        self.addSubInterface(self.characterPage, QIcon("img/character.svg"), "角色")
-        self.addSubInterface(self.unlockerPage, QIcon("img/unlock.svg"), "解鎖")
-        self.addSubInterface(self.patcherPage, QIcon("img/pill.svg"), "補丁")
-        self.addSubInterface(self.pfmManualPage, QIcon("img/manual.svg"), "PERFORMAI MANUAL")
-        self.addSubInterface(self.configPage, QIcon("img/setting.svg"), "設定", NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.aboutPage, QIcon("img/info.svg"), "關於", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.homePage, QIcon("./img/home.svg"), "首頁")
+        self.addSubInterface(self.optPage, QIcon("./img/opt.svg"), "OPT")
+        self.addSubInterface(self.musicPage, QIcon("./img/music.svg"), "樂曲")
+        self.addSubInterface(self.characterPage, QIcon("./img/character.svg"), "角色")
+        self.addSubInterface(self.unlockerPage, QIcon("./img/unlock.svg"), "解鎖")
+        self.addSubInterface(self.patcherPage, QIcon("./img/pill.svg"), "補丁")
+        self.addSubInterface(self.pfmManualPage, QIcon("./img/manual.svg"), "PERFORMAI MANUAL")
+        self.addSubInterface(self.configPage, QIcon("./img/setting.svg"), "設定", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.aboutPage, QIcon("./img/info.svg"), "關於", NavigationItemPosition.BOTTOM)
 
         self.navigationInterface.setCurrentItem(self.homePage.objectName())
 

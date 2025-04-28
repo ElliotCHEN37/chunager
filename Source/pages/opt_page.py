@@ -108,7 +108,7 @@ class OptPage(QWidget):
             try:
                 shutil.rmtree(path)
                 print(f"已刪除資料夾: {path}")
-                self.load_opt_data()  # 刷新表格
+                self.load_opt_data()
             except Exception as e:
                 print(f"刪除失敗: {e}")
 

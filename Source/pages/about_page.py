@@ -46,7 +46,7 @@ class AboutPage(QWidget):
         licenseLabel = CaptionLabel(
             "\n免責聲明：\n"
             "本程式為個人非官方開發，與 SEGA 及 CHUNITHM 官方團隊無任何關係。\n"
-            "本程式僅供學術研究及個人學習用途，禁止用於任何商業用途。\n"
+            "本程式僅供學術研究及個人學習用途，禁止用於跳臉世嘉。\n"
             "使用本程式所造成的一切後果，作者不負任何責任。"
         )
         licenseFont = QFont()

@@ -2,10 +2,10 @@ import os
 import re
 import shutil
 import xml.etree.ElementTree as ET
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QTableWidget, QLabel, QFileDialog
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout
 from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt
-from qfluentwidgets import LargeTitleLabel, PushButton
+from PySide6.QtCore import Qt, QTimer
+from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton
 import configparser
 from PIL import Image
 
@@ -14,6 +14,7 @@ class MusicPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("musicPage")
+        self.has_searched = False
 
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignTop)
@@ -21,27 +22,83 @@ class MusicPage(QWidget):
         self.titleLabel = LargeTitleLabel("樂曲管理")
         self.layout.addWidget(self.titleLabel)
 
-        self.searchingLabel = QLabel("正在搜尋資料...", self)
+        self.searchingLabel = BodyLabel("正在搜尋資料...")
         self.searchingLabel.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.searchingLabel)
 
-        self.table = QTableWidget(self)
+        search_layout = QHBoxLayout()
+        self.searchBox = LineEdit(self)
+        self.searchBox.setPlaceholderText("搜尋音樂名稱...")
+        search_layout.addWidget(self.searchBox)
+
+        self.searchButton = PrimaryPushButton("搜尋")
+        self.searchButton.clicked.connect(self.filter_music_data)
+        search_layout.addWidget(self.searchButton)
+
+        self.layout.addLayout(search_layout)
+
+        self.table = TableWidget(self)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
             "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "發行日期", "難度", "提取封面"
         ])
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSortingEnabled(True)
         self.layout.addWidget(self.table)
 
-        self.load_music_data()
+    def showEvent(self, event):
+        if not self.has_searched:
+            QTimer.singleShot(1000, self.load_music_data)
+            self.has_searched = True
 
     def load_music_data(self):
         music_xml_paths = self.find_all_music_xmls()
+        print(f"找到的音樂 XML 路徑: {music_xml_paths}")
         self.table.setRowCount(len(music_xml_paths))
+        self.music_data = []
 
         for row, xml_path in enumerate(music_xml_paths):
             data = self.parse_music_xml(xml_path)
+            self.music_data.append(data)
 
+            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
+            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
+            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
+            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])) )
+            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
+            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
+            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
+
+            pixmap = self.load_dds_image(data["jacket_path"])
+            if pixmap is not None:
+                label = BodyLabel()
+                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.table.setCellWidget(row, 0, label)
+            else:
+                label = BodyLabel("無法加載封面")
+                self.table.setCellWidget(row, 0, label)
+
+            self.table.setRowHeight(row, 128)
+            self.table.setColumnWidth(row, 128)
+
+            copy_button = PushButton("提取")
+            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
+            self.table.setCellWidget(row, 7, copy_button)
+
+        self.searchingLabel.hide()
+
+    def filter_music_data(self):
+        search_text = self.searchBox.text()
+        filtered_data = []
+        seen_music_names = set()
+
+        for data in self.music_data:
+            if search_text in data["music_name"] and data["music_name"] not in seen_music_names:
+                filtered_data.append(data)
+                seen_music_names.add(data["music_name"])
+
+        self.table.setRowCount(len(filtered_data))
+        for row, data in enumerate(filtered_data):
             self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
             self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
             self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
@@ -52,18 +109,19 @@ class MusicPage(QWidget):
 
             pixmap = self.load_dds_image(data["jacket_path"])
             if pixmap is not None:
-                label = QLabel()
+                label = BodyLabel()
                 label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 self.table.setCellWidget(row, 0, label)
+            else:
+                label = BodyLabel("無法加載封面")
+                self.table.setCellWidget(row, 0, label)
 
-                self.table.setRowHeight(row, 128)
-                self.table.setColumnWidth(row, 128)
+            self.table.setRowHeight(row, 128)
+            self.table.setColumnWidth(row, 128)
 
             copy_button = PushButton("提取")
             copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
             self.table.setCellWidget(row, 7, copy_button)
-
-        self.searchingLabel.hide()
 
     def load_dds_image(self, dds_path):
         if not os.path.exists(dds_path):
@@ -130,8 +188,7 @@ class MusicPage(QWidget):
         if os.path.exists(option_path):
             for f in os.listdir(option_path):
                 if f.startswith('A') and os.path.isdir(os.path.join(option_path, f)):
-                    a_folder = os.path.join(option_path, f)
-                    self.searchingLabel.setText(f"正在搜尋：{a_folder}")
+                    self.searchingLabel.setText(f"正在搜尋：{option_path}")
                     result.extend(self.find_music_xml_in_folder(option_path))
 
         return result

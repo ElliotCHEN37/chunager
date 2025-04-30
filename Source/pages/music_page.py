@@ -35,6 +35,10 @@ class MusicPage(QWidget):
         self.searchButton.clicked.connect(self.filter_music_data)
         search_layout.addWidget(self.searchButton)
 
+        self.resetButton = PushButton("重置")
+        self.resetButton.clicked.connect(self.reset_search_filter)
+        search_layout.addWidget(self.resetButton)
+
         self.layout.addLayout(search_layout)
 
         self.table = TableWidget(self)
@@ -86,6 +90,10 @@ class MusicPage(QWidget):
             self.table.setCellWidget(row, 7, copy_button)
 
         self.searchingLabel.hide()
+
+    def reset_search_filter(self):
+        self.searchBox.clear()
+        self.filter_music_data()
 
     def filter_music_data(self):
         search_text = self.searchBox.text().strip().lower()

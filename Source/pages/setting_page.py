@@ -1,10 +1,15 @@
 import configparser
 import os
+import sys
 import webbrowser
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, PrimaryPushButton, Flyout, InfoBarIcon, FlyoutAnimationType, LineEdit, PushButton
+
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class SettingPage(QWidget):
     def __init__(self):
@@ -24,7 +29,7 @@ class SettingPage(QWidget):
         self.config = self.load_config()
 
         update_label = StrongBodyLabel("檢查更新：")
-        self.update_button = PushButton(QIcon("./img/web.svg"), "訪問GitHub發佈頁")
+        self.update_button = PushButton(QIcon(resource_path("img/web.svg")), "訪問GitHub發佈頁")
         self.update_button.clicked.connect(self.open_github)
 
         theme_label = StrongBodyLabel("選擇主題：")
@@ -40,13 +45,13 @@ class SettingPage(QWidget):
         current_path = self.config.get("GENERAL", "segatools_path", fallback="")
         self.segatoools_lineedit.setText(current_path)
 
-        self.segatoools_button = PrimaryPushButton(QIcon("./img/folder.svg"), "選擇檔案")
+        self.segatoools_button = PrimaryPushButton(QIcon(resource_path("img/folder.svg")), "選擇檔案")
         self.segatoools_button.clicked.connect(self.choose_segatoools_path)
 
         segatools_layout.addWidget(self.segatoools_lineedit)
         segatools_layout.addWidget(self.segatoools_button)
 
-        self.save_button = PrimaryPushButton(QIcon("./img/save.svg"), "儲存設定")
+        self.save_button = PrimaryPushButton(QIcon(resource_path("img/save.svg")), "儲存設定")
         self.save_button.clicked.connect(self.save_config)
 
         layout.addWidget(titleLabel)
@@ -62,18 +67,26 @@ class SettingPage(QWidget):
         layout.addSpacing(10)
         layout.addWidget(self.save_button)
 
+    def get_config_path(self):
+        if getattr(sys, 'frozen', False):
+            app_dir = os.path.dirname(sys.executable)
+        else:
+            app_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+
+        return os.path.join(app_dir, "config.ini")
+
     def load_config(self):
         config = configparser.ConfigParser()
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
-        config.read(config_path)
+        config_path = self.get_config_path()
+        config.read(config_path, encoding="utf-8")
+        self.config_path = config_path
         return config
 
     def save_config(self):
         self.config.set("DISPLAY", "theme", self.theme_combobox.currentText())
         self.config.set("GENERAL", "segatools_path", self.segatoools_lineedit.text())
 
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
-        with open(config_path, "w") as configfile:
+        with open(self.config_path, "w", encoding="utf-8") as configfile:
             self.config.write(configfile)
 
         Flyout.create(

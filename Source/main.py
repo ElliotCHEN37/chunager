@@ -14,6 +14,10 @@ from pages.pfm_manual_page import PFMManualPage
 from pages.setting_page import SettingPage
 from pages.about_page import AboutPage
 
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
+
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
@@ -27,8 +31,28 @@ class MainWindow(FluentWindow):
 
     def load_config(self):
         config = configparser.ConfigParser()
-        config_path = os.path.join(os.path.dirname(__file__), ".", "config.ini")
-        config.read(config_path)
+
+        if getattr(sys, 'frozen', False):
+            app_dir = os.path.dirname(sys.executable)
+        else:
+            app_dir = os.path.abspath(os.path.dirname(__file__))
+
+        config_path = os.path.join(app_dir, "config.ini")
+
+        if not os.path.exists(config_path):
+            config["GENERAL"] = {
+                "segatools_path": ""
+            }
+            config["DISPLAY"] = {
+                "theme": "AUTO"
+            }
+            with open(config_path, "w", encoding="utf-8") as f:
+                config.write(f)
+            print(f"已建立預設 config.ini：{config_path}")
+        else:
+            config.read(config_path, encoding="utf-8")
+
+        self.config_path = config_path
         return config
 
     def setup_theme(self):
@@ -42,15 +66,15 @@ class MainWindow(FluentWindow):
 
     def init_pages(self):
         self.pages = {
-            "首頁": (HomePage(), QIcon("./img/home.svg"), NavigationItemPosition.TOP),
-            "OPT": (OptPage(), QIcon("./img/opt.svg"), NavigationItemPosition.TOP),
-            "樂曲": (MusicPage(), QIcon("./img/music.svg"), NavigationItemPosition.TOP),
-            "角色": (CharacterPage(), QIcon("./img/character.svg"), NavigationItemPosition.TOP),
-            "解鎖": (UnlockerPage(), QIcon("./img/unlock.svg"), NavigationItemPosition.TOP),
-            "補丁": (PatcherPage(), QIcon("./img/pill.svg"), NavigationItemPosition.TOP),
-            "PERFORMAI MANUAL": (PFMManualPage(), QIcon("./img/manual.svg"), NavigationItemPosition.TOP),
-            "設定": (SettingPage(), QIcon("./img/setting.svg"), NavigationItemPosition.BOTTOM),
-            "關於": (AboutPage(), QIcon("./img/info.svg"), NavigationItemPosition.BOTTOM)
+            "首頁": (HomePage(), QIcon(resource_path("img/home.svg")), NavigationItemPosition.TOP),
+            "OPT": (OptPage(), QIcon(resource_path("img/opt.svg")), NavigationItemPosition.TOP),
+            "樂曲": (MusicPage(), QIcon(resource_path("img/music.svg")), NavigationItemPosition.TOP),
+            "角色": (CharacterPage(), QIcon(resource_path("img/character.svg")), NavigationItemPosition.TOP),
+            "解鎖": (UnlockerPage(), QIcon(resource_path("img/unlock.svg")), NavigationItemPosition.TOP),
+            "補丁": (PatcherPage(), QIcon(resource_path("img/pill.svg")), NavigationItemPosition.TOP),
+            "PERFORMAI MANUAL": (PFMManualPage(), QIcon(resource_path("img/manual.svg")), NavigationItemPosition.TOP),
+            "設定": (SettingPage(), QIcon(resource_path("img/setting.svg")), NavigationItemPosition.BOTTOM),
+            "關於": (AboutPage(), QIcon(resource_path("img/info.svg")), NavigationItemPosition.BOTTOM)
         }
 
     def init_navigation(self):
@@ -58,7 +82,6 @@ class MainWindow(FluentWindow):
             self.addSubInterface(page, icon, name, position)
 
         self.navigationInterface.setCurrentItem("首頁")
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

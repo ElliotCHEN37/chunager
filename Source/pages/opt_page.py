@@ -1,10 +1,15 @@
 import configparser
 import os
+import sys
 import shutil
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox
 from PySide6.QtCore import Qt
 from qfluentwidgets import TableWidget, LargeTitleLabel, PrimaryPushButton
+
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class OptPage(QWidget):
     def __init__(self):
@@ -31,12 +36,19 @@ class OptPage(QWidget):
 
         self.load_opt_data()
 
+    def get_config_path(self):
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+        return os.path.join(base_path, "config.ini")
+
     def load_opt_data(self):
         self.table.clearContents()
         self.table.setRowCount(0)
 
         config = configparser.ConfigParser()
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+        config_path = self.get_config_path()
         config.read(config_path)
 
         segatools_path = config.get("GENERAL", "segatools_path", fallback=None)

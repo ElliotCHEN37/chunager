@@ -1,8 +1,14 @@
+import os
+import sys
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
 import webbrowser
+
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class PFMManualPage(QWidget):
     def __init__(self):
@@ -19,13 +25,13 @@ class PFMManualPage(QWidget):
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        openButton = PrimaryPushButton(QIcon("./img/web.svg"), "打開 PERFORMAI MANUAL")
+        openButton = PrimaryPushButton(QIcon(resource_path("img/web.svg")), "打開 PERFORMAI MANUAL")
         openButton.clicked.connect(self.open_manual)
 
         notice = HeaderCardWidget()
 
         notice.setTitle("WOOPS")
-        notice.ErrorIcon = IconWidget(QIcon("./img/error.svg"))
+        notice.ErrorIcon = IconWidget(QIcon(resource_path("img/error.svg")))
         notice.infoLabel = BodyLabel("由於某些技術原因，暫時不支援內嵌網站")
 
         notice.vBoxLayout = QVBoxLayout()

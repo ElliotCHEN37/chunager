@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout
 from PySide6.QtGui import QPixmap, QImage
@@ -9,6 +10,9 @@ from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, Tab
 import configparser
 from PIL import Image
 
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class MusicPage(QWidget):
     def __init__(self):
@@ -49,6 +53,13 @@ class MusicPage(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSortingEnabled(True)
         self.layout.addWidget(self.table)
+
+    def get_config_path(self):
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+        return os.path.join(base_path, "config.ini")
 
     def showEvent(self, event):
         if not self.has_searched:
@@ -171,7 +182,7 @@ class MusicPage(QWidget):
     def find_all_music_xmls(self):
         result = []
 
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+        config_path = self.get_config_path()
         config = configparser.ConfigParser()
         config.read(config_path)
 

@@ -4,6 +4,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 import subprocess
 import os
+import sys
+
+def resource_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class UnlockerPage(QWidget):
     def __init__(self):
@@ -20,13 +25,13 @@ class UnlockerPage(QWidget):
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        unlockerButton = PrimaryPushButton(QIcon("./img/launch.svg"), "啟動 Unlocker")
+        unlockerButton = PrimaryPushButton(QIcon(resource_path("img/launch.svg")), "啟動 Unlocker")
         unlockerButton.clicked.connect(self.launch_unlocker)
 
         notice = HeaderCardWidget()
 
         notice.setTitle("警告")
-        notice.ErrorIcon = IconWidget(QIcon("./img/error.svg"))
+        notice.ErrorIcon = IconWidget(QIcon(resource_path("img/error.svg")))
         notice.infoLabel = BodyLabel("Unlocker 並非由本人編寫，如有疑慮請勿使用")
 
         notice.vBoxLayout = QVBoxLayout()
@@ -51,7 +56,7 @@ class UnlockerPage(QWidget):
         layout.addWidget(notice)
 
     def launch_unlocker(self):
-        unlocker_path = os.path.abspath("./extra/unlocker.exe")
+        unlocker_path = os.path.abspath(resource_path("extra/unlocker.exe"))
         if os.path.exists(unlocker_path):
             try:
                 subprocess.Popen(unlocker_path, shell=True)

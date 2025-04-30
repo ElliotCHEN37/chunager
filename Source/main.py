@@ -1,9 +1,9 @@
-import configparser
 import os
+import sys
+import configparser
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentWindow, setTheme, Theme, NavigationItemPosition
-import sys
 from pages.home_page import HomePage
 from pages.opt_page import OptPage
 from pages.music_page import MusicPage
@@ -20,49 +20,48 @@ class MainWindow(FluentWindow):
         self.setWindowTitle("CHUNAGER")
         self.resize(1000, 750)
 
-        self.config = configparser.ConfigParser()
+        self.config = self.load_config()
+        self.setup_theme()
+        self.init_pages()
+        self.init_navigation()
 
-        self.config_path = os.path.join(os.path.dirname(__file__), ".", "config.ini")
-        self.config.read(self.config_path)
+    def load_config(self):
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(__file__), ".", "config.ini")
+        config.read(config_path)
+        return config
 
-        if self.config.get("DISPLAY", "theme") == "AUTO":
-            setTheme(Theme.AUTO)
-        elif self.config.get("DISPLAY", "theme") == "LIGHT":
-            setTheme(Theme.LIGHT)
-        elif self.config.get("DISPLAY", "theme") == "DARK":
-            setTheme(Theme.DARK)
-        else:
-            setTheme(Theme.AUTO)
+    def setup_theme(self):
+        theme = self.config.get("DISPLAY", "theme", fallback="AUTO").upper()
+        theme_map = {
+            "AUTO": Theme.AUTO,
+            "LIGHT": Theme.LIGHT,
+            "DARK": Theme.DARK
+        }
+        setTheme(theme_map.get(theme, Theme.AUTO))
 
-        self.homePage = HomePage()
-        self.optPage = OptPage()
-        self.musicPage = MusicPage()
-        self.characterPage = CharacterPage()
-        self.unlockerPage = UnlockerPage()
-        self.patcherPage = PatcherPage()
-        self.pfmManualPage = PFMManualPage()
-        self.configPage = ConfigPage()
-        self.aboutPage = AboutPage()
+    def init_pages(self):
+        self.pages = {
+            "首頁": (HomePage(), QIcon("./img/home.svg"), NavigationItemPosition.TOP),
+            "OPT": (OptPage(), QIcon("./img/opt.svg"), NavigationItemPosition.TOP),
+            "樂曲": (MusicPage(), QIcon("./img/music.svg"), NavigationItemPosition.TOP),
+            "角色": (CharacterPage(), QIcon("./img/character.svg"), NavigationItemPosition.TOP),
+            "解鎖": (UnlockerPage(), QIcon("./img/unlock.svg"), NavigationItemPosition.TOP),
+            "補丁": (PatcherPage(), QIcon("./img/pill.svg"), NavigationItemPosition.TOP),
+            "PERFORMAI MANUAL": (PFMManualPage(), QIcon("./img/manual.svg"), NavigationItemPosition.TOP),
+            "設定": (ConfigPage(), QIcon("./img/setting.svg"), NavigationItemPosition.BOTTOM),
+            "關於": (AboutPage(), QIcon("./img/info.svg"), NavigationItemPosition.BOTTOM)
+        }
 
-        self.initNavigation()
+    def init_navigation(self):
+        for name, (page, icon, position) in self.pages.items():
+            self.addSubInterface(page, icon, name, position)
 
-    def initNavigation(self):
-        self.addSubInterface(self.homePage, QIcon("./img/home.svg"), "首頁")
-        self.addSubInterface(self.optPage, QIcon("./img/opt.svg"), "OPT")
-        self.addSubInterface(self.musicPage, QIcon("./img/music.svg"), "樂曲")
-        self.addSubInterface(self.characterPage, QIcon("./img/character.svg"), "角色")
-        self.addSubInterface(self.unlockerPage, QIcon("./img/unlock.svg"), "解鎖")
-        self.addSubInterface(self.patcherPage, QIcon("./img/pill.svg"), "補丁")
-        self.addSubInterface(self.pfmManualPage, QIcon("./img/manual.svg"), "PERFORMAI MANUAL")
-        self.addSubInterface(self.configPage, QIcon("./img/setting.svg"), "設定", NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.aboutPage, QIcon("./img/info.svg"), "關於", NavigationItemPosition.BOTTOM)
+        self.navigationInterface.setCurrentItem("首頁")
 
-        self.navigationInterface.setCurrentItem(self.homePage.objectName())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     window = MainWindow()
     window.show()
-
     sys.exit(app.exec())

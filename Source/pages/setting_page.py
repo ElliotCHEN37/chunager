@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, PrimaryPushButton, Flyout, InfoBarIcon, FlyoutAnimationType, LineEdit, PushButton
 
-class ConfigPage(QWidget):
+class SettingPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("configPage")

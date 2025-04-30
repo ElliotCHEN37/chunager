@@ -102,7 +102,9 @@ class MusicPage(QWidget):
         print(f"目前音樂資料筆數: {len(self.music_data)}")
 
         for data in self.music_data:
-            if search_text in data["music_name"].lower():
+            if (search_text in data["music_id"].lower() or
+                    search_text in data["music_name"].lower() or
+                    search_text in data["artist_name"].lower()):
                 filtered_data.append(data)
 
         self.table.clearContents()

@@ -11,7 +11,7 @@ from pages.character_page import CharacterPage
 from pages.unlocker_page import UnlockerPage
 from pages.patcher_page import PatcherPage
 from pages.pfm_manual_page import PFMManualPage
-from pages.config_page import ConfigPage
+from pages.setting_page import SettingPage
 from pages.about_page import AboutPage
 
 class MainWindow(FluentWindow):
@@ -49,7 +49,7 @@ class MainWindow(FluentWindow):
             "解鎖": (UnlockerPage(), QIcon("./img/unlock.svg"), NavigationItemPosition.TOP),
             "補丁": (PatcherPage(), QIcon("./img/pill.svg"), NavigationItemPosition.TOP),
             "PERFORMAI MANUAL": (PFMManualPage(), QIcon("./img/manual.svg"), NavigationItemPosition.TOP),
-            "設定": (ConfigPage(), QIcon("./img/setting.svg"), NavigationItemPosition.BOTTOM),
+            "設定": (SettingPage(), QIcon("./img/setting.svg"), NavigationItemPosition.BOTTOM),
             "關於": (AboutPage(), QIcon("./img/info.svg"), NavigationItemPosition.BOTTOM)
         }
 

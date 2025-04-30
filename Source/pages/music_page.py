@@ -88,22 +88,25 @@ class MusicPage(QWidget):
         self.searchingLabel.hide()
 
     def filter_music_data(self):
-        search_text = self.searchBox.text()
+        search_text = self.searchBox.text().strip().lower()
         filtered_data = []
-        seen_music_names = set()
+
+        print(f"目前音樂資料筆數: {len(self.music_data)}")
 
         for data in self.music_data:
-            if search_text in data["music_name"] and data["music_name"] not in seen_music_names:
+            if search_text in data["music_name"].lower():
                 filtered_data.append(data)
-                seen_music_names.add(data["music_name"])
 
+        self.table.clearContents()
         self.table.setRowCount(len(filtered_data))
+
         for row, data in enumerate(filtered_data):
             self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
             self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
             self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
             self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])))
             self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
+
             difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
             self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
 
@@ -158,8 +161,8 @@ class MusicPage(QWidget):
     def find_all_music_xmls(self):
         result = []
 
-        config = configparser.ConfigParser()
         config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+        config = configparser.ConfigParser()
         config.read(config_path)
 
         segatools_path = config.get("GENERAL", "segatools_path", fallback=None)
@@ -180,39 +183,33 @@ class MusicPage(QWidget):
         else:
             option_path = os.path.normpath(os.path.join(os.path.dirname(segatools_path), option_relative_path))
 
-        data_a000_path = os.path.normpath(os.path.join(os.path.dirname(segatools_path), "..", "data", "A000"))
-        if os.path.exists(data_a000_path):
-            self.searchingLabel.setText(f"正在搜尋：{data_a000_path}")
-            result.extend(self.find_music_xml_in_folder(data_a000_path))
+        data_a000_music_path = os.path.normpath(
+            os.path.join(os.path.dirname(segatools_path), "..", "data", "A000", "music"))
+        if os.path.isdir(data_a000_music_path):
+            self.searchingLabel.setText(f"正在搜尋：{data_a000_music_path}")
+            result.extend(self.find_music_xml_in_music_folder(data_a000_music_path))
 
-        if os.path.exists(option_path):
-            for f in os.listdir(option_path):
-                if f.startswith('A') and os.path.isdir(os.path.join(option_path, f)):
-                    self.searchingLabel.setText(f"正在搜尋：{option_path}")
-                    result.extend(self.find_music_xml_in_folder(option_path))
+        if os.path.isdir(option_path):
+            for name in os.listdir(option_path):
+                subfolder_path = os.path.join(option_path, name)
+                music_folder_path = os.path.join(subfolder_path, "music")
+                if os.path.isdir(subfolder_path) and name.startswith("A") and os.path.isdir(music_folder_path):
+                    self.searchingLabel.setText(f"正在搜尋：{music_folder_path}")
+                    result.extend(self.find_music_xml_in_music_folder(music_folder_path))
 
         return result
 
-    def find_music_xml_in_folder(self, folder_path):
+    def find_music_xml_in_music_folder(self, music_folder_root):
         found = []
-        if not os.path.exists(folder_path):
+        if not os.path.exists(music_folder_root):
             return found
 
-        for a_folder in os.listdir(folder_path):
-            a_folder_path = os.path.join(folder_path, a_folder)
-            if not (os.path.isdir(a_folder_path) and a_folder.startswith("A")):
-                continue
-
-            music_root_path = os.path.join(a_folder_path, "music")
-            if not os.path.exists(music_root_path):
-                continue
-
-            for music_folder in os.listdir(music_root_path):
-                if re.match(r'^music\d+$', music_folder):
-                    music_folder_path = os.path.join(music_root_path, music_folder)
-                    music_xml_path = os.path.join(music_folder_path, "music.xml")
-                    if os.path.exists(music_xml_path):
-                        found.append(music_xml_path)
+        for folder in os.listdir(music_folder_root):
+            if re.match(r'^music\d+$', folder):
+                music_folder_path = os.path.join(music_folder_root, folder)
+                music_xml_path = os.path.join(music_folder_path, "music.xml")
+                if os.path.exists(music_xml_path):
+                    found.append(music_xml_path)
 
         return found
 

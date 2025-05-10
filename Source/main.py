@@ -99,7 +99,7 @@ class MainWindow(FluentWindow):
             "下載": (HDDPage(), self.get_icon("download"), NavigationItemPosition.TOP),
             "解鎖": (UnlockerPage(), self.get_icon("unlock"), NavigationItemPosition.TOP),
             "補丁": (PatcherPage(), self.get_icon("pill"), NavigationItemPosition.TOP),
-            "PERFORMAI MANUAL": (PFMManualPage(), self.get_icon("manual"), NavigationItemPosition.TOP),
+            "手冊": (PFMManualPage(), self.get_icon("manual"), NavigationItemPosition.TOP),
             "設定": (SettingPage(), self.get_icon("setting"), NavigationItemPosition.BOTTOM),
             "關於": (AboutPage(), self.get_icon("info"), NavigationItemPosition.BOTTOM)
         }

@@ -18,7 +18,7 @@ class PFMManualPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = LargeTitleLabel("PERFORMAI MANUAL")
+        titleLabel = LargeTitleLabel("手冊")
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)

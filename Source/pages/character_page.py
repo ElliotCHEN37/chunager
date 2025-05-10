@@ -168,7 +168,7 @@ class CharacterPage(QWidget):
         self.table = TableWidget(self)
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "圖像", "角色ID", "角色名稱", "出處", "繪師", "等級獎勵", "提取圖像"
+            "圖像", "ID", "名稱", "出處", "繪師", "等級獎勵", "提取圖像"
         ])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSortingEnabled(True)

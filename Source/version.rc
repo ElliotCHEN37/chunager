@@ -22,7 +22,7 @@ VSVersionInfo(
         StringStruct(u'OriginalFilename', u'chunager.exe'),
         StringStruct(u'ProductName', u'Chunager'),
         StringStruct(u'ProductVersion', u'1.0')])
-      ]), 
-    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+      ]),
+    VarFileInfo([VarStruct(u'Translation', [1028, 1200])])
   ]
 )

@@ -44,10 +44,11 @@ class AboutPage(QWidget):
         authorLabel.setOpenExternalLinks(True)
 
         licenseLabel = CaptionLabel(
-            "\n免責聲明：\n"
-            "本程式為個人非官方開發，與 SEGA 及 CHUNITHM 官方團隊無任何關係。\n"
-            '本程式使用MIT授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。\n'
-            "使用本程式所造成的一切後果，作者不負任何責任。"
+            "<br>免責聲明：<br>"
+            "本程式為個人開發，與任何和Evil Leaker, SEGA, CHUNITHM 官方團隊或相關人物及事項無任何關係。<br>"
+            "請遵守當地法律使用。<br>"
+            '本程式使用MIT授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。<br>'
+            "使用本程式所造成的一切後果，作者不承擔任何責任。"
         )
         licenseFont = QFont()
         licenseFont.setPointSize(10)

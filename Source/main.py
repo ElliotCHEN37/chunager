@@ -16,6 +16,7 @@ from pages.patcher_page import PatcherPage
 from pages.pfm_manual_page import PFMManualPage
 from pages.setting_page import SettingPage
 from pages.about_page import AboutPage
+from pages.hdd_page import HDDPage
 
 def resource_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
@@ -95,6 +96,7 @@ class MainWindow(FluentWindow):
             "OPT": (OptPage(), self.get_icon("opt"), NavigationItemPosition.TOP),
             "樂曲": (MusicPage(), self.get_icon("music"), NavigationItemPosition.TOP),
             "角色": (CharacterPage(), self.get_icon("character"), NavigationItemPosition.TOP),
+            "下載": (HDDPage(), self.get_icon("download"), NavigationItemPosition.TOP),
             "解鎖": (UnlockerPage(), self.get_icon("unlock"), NavigationItemPosition.TOP),
             "補丁": (PatcherPage(), self.get_icon("pill"), NavigationItemPosition.TOP),
             "PERFORMAI MANUAL": (PFMManualPage(), self.get_icon("manual"), NavigationItemPosition.TOP),

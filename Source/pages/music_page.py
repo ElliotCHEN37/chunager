@@ -5,8 +5,8 @@ import sys
 import xml.etree.ElementTree as ET
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout
 from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt, QTimer
-from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton
+from PySide6.QtCore import Qt, QThread, Signal
+from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
 import configparser
 from PIL import Image
 
@@ -14,45 +14,22 @@ def resource_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base_path, relative_path)
 
-class MusicPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setObjectName("musicPage")
-        self.has_searched = False
+class MusicSearchThread(QThread):
+    search_completed = Signal(dict)
+    progress_update = Signal(int)
 
-        self.layout = QVBoxLayout(self)
-        self.layout.setAlignment(Qt.AlignTop)
+    def run(self):
+        music_xml_paths = self.find_all_music_xmls()
+        music_data = {}
 
-        self.titleLabel = LargeTitleLabel("樂曲管理")
-        self.layout.addWidget(self.titleLabel)
+        total_files = len(music_xml_paths)
+        for index, xml_path in enumerate(music_xml_paths):
+            data = self.parse_music_xml(xml_path)
+            music_data[data["music_id"]] = data
+            progress = int(((index + 1) / total_files) * 100)
+            self.progress_update.emit(progress)
 
-        self.searchingLabel = BodyLabel("正在搜尋資料...")
-        self.searchingLabel.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(self.searchingLabel)
-
-        search_layout = QHBoxLayout()
-        self.searchBox = LineEdit(self)
-        self.searchBox.setPlaceholderText("搜尋音樂名稱...")
-        search_layout.addWidget(self.searchBox)
-
-        self.searchButton = PrimaryPushButton("搜尋")
-        self.searchButton.clicked.connect(self.filter_music_data)
-        search_layout.addWidget(self.searchButton)
-
-        self.resetButton = PushButton("重置")
-        self.resetButton.clicked.connect(self.reset_search_filter)
-        search_layout.addWidget(self.resetButton)
-
-        self.layout.addLayout(search_layout)
-
-        self.table = TableWidget(self)
-        self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels([
-            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "發行日期", "難度", "提取封面"
-        ])
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.setSortingEnabled(True)
-        self.layout.addWidget(self.table)
+        self.search_completed.emit(music_data)
 
     def get_config_path(self):
         if getattr(sys, 'frozen', False):
@@ -61,134 +38,14 @@ class MusicPage(QWidget):
             base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
         return os.path.join(base_path, "config.ini")
 
-    def showEvent(self, event):
-        if not self.has_searched:
-            QTimer.singleShot(1000, self.load_music_data)
-            self.has_searched = True
-
-    def load_music_data(self):
-        music_xml_paths = self.find_all_music_xmls()
-        print(f"找到的音樂 XML 路徑: {music_xml_paths}")
-        self.table.setRowCount(len(music_xml_paths))
-        self.music_data = []
-
-        for row, xml_path in enumerate(music_xml_paths):
-            data = self.parse_music_xml(xml_path)
-            self.music_data.append(data)
-
-            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
-            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
-            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
-            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])) )
-            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
-            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
-            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
-
-            pixmap = self.load_dds_image(data["jacket_path"])
-            if pixmap is not None:
-                label = BodyLabel()
-                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                self.table.setCellWidget(row, 0, label)
-            else:
-                label = BodyLabel("無法加載封面")
-                self.table.setCellWidget(row, 0, label)
-
-            self.table.setRowHeight(row, 128)
-            self.table.setColumnWidth(row, 128)
-
-            copy_button = PushButton("提取")
-            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
-            self.table.setCellWidget(row, 7, copy_button)
-
-        self.searchingLabel.hide()
-
-    def reset_search_filter(self):
-        self.searchBox.clear()
-        self.filter_music_data()
-
-    def filter_music_data(self):
-        search_text = self.searchBox.text().strip().lower()
-        filtered_data = []
-
-        print(f"目前音樂資料筆數: {len(self.music_data)}")
-
-        for data in self.music_data:
-            if (search_text in data["music_id"].lower() or
-                    search_text in data["music_name"].lower() or
-                    search_text in data["artist_name"].lower()):
-                filtered_data.append(data)
-
-        self.table.clearContents()
-        self.table.setRowCount(len(filtered_data))
-
-        for row, data in enumerate(filtered_data):
-            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
-            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
-            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
-            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])))
-            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
-
-            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
-            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
-
-            pixmap = self.load_dds_image(data["jacket_path"])
-            if pixmap is not None:
-                label = BodyLabel()
-                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                self.table.setCellWidget(row, 0, label)
-            else:
-                label = BodyLabel("無法加載封面")
-                self.table.setCellWidget(row, 0, label)
-
-            self.table.setRowHeight(row, 128)
-            self.table.setColumnWidth(row, 128)
-
-            copy_button = PushButton("提取")
-            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
-            self.table.setCellWidget(row, 7, copy_button)
-
-    def load_dds_image(self, dds_path):
-        if not os.path.exists(dds_path):
-            return None
-        try:
-            img = Image.open(dds_path)
-            img = img.convert("RGBA")
-            data = img.tobytes("raw", "RGBA")
-            qimage = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
-            return QPixmap.fromImage(qimage)
-        except Exception as e:
-            print(f"讀取DDS封面失敗: {dds_path}，錯誤: {e}")
-            return None
-
-    def copy_cover_image(self, data):
-        target_folder = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
-
-        if target_folder:
-            if not os.path.exists(target_folder):
-                os.makedirs(target_folder)
-
-            if os.path.exists(data["jacket_path"]):
-                try:
-                    target_path = os.path.join(target_folder, os.path.basename(data["jacket_path"]))
-                    shutil.copy(data["jacket_path"], target_path)
-                    print(f"成功將封面複製到: {target_path}")
-                except Exception as e:
-                    print(f"複製封面失敗: {e}")
-            else:
-                print(f"封面檔案不存在: {data['jacket_path']}")
-        else:
-            print("未選擇任何資料夾")
-
     def find_all_music_xmls(self):
         result = []
-
         config_path = self.get_config_path()
         config = configparser.ConfigParser()
         config.read(config_path)
 
         segatools_path = config.get("GENERAL", "segatools_path", fallback=None)
         if not segatools_path or not os.path.exists(segatools_path):
-            self.searchingLabel.setText("找不到 segatools.ini")
             return result
 
         segatools_config = configparser.ConfigParser()
@@ -196,7 +53,6 @@ class MusicPage(QWidget):
 
         option_relative_path = segatools_config.get("vfs", "option", fallback=None)
         if not option_relative_path:
-            self.searchingLabel.setText("找不到 [vfs] option 設定")
             return result
 
         if os.path.isabs(option_relative_path):
@@ -207,7 +63,6 @@ class MusicPage(QWidget):
         data_a000_music_path = os.path.normpath(
             os.path.join(os.path.dirname(segatools_path), "..", "data", "A000", "music"))
         if os.path.isdir(data_a000_music_path):
-            self.searchingLabel.setText(f"正在搜尋：{data_a000_music_path}")
             result.extend(self.find_music_xml_in_music_folder(data_a000_music_path))
 
         if os.path.isdir(option_path):
@@ -215,7 +70,6 @@ class MusicPage(QWidget):
                 subfolder_path = os.path.join(option_path, name)
                 music_folder_path = os.path.join(subfolder_path, "music")
                 if os.path.isdir(subfolder_path) and name.startswith("A") and os.path.isdir(music_folder_path):
-                    self.searchingLabel.setText(f"正在搜尋：{music_folder_path}")
                     result.extend(self.find_music_xml_in_music_folder(music_folder_path))
 
         return result
@@ -277,3 +131,169 @@ class MusicPage(QWidget):
             "release_date": release_date,
             "fumens": fumens
         }
+
+class MusicPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("musicPage")
+        self.has_searched = False
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setAlignment(Qt.AlignTop)
+
+        self.titleLabel = LargeTitleLabel("樂曲管理")
+        self.layout.addWidget(self.titleLabel)
+
+        self.searchingLabel = BodyLabel("正在搜尋資料...")
+        self.searchingLabel.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.searchingLabel)
+
+        self.progressBar = ProgressBar(self)
+        self.progressBar.setRange(0, 100)
+        self.layout.addWidget(self.progressBar)
+
+        search_layout = QHBoxLayout()
+        self.searchBox = LineEdit(self)
+        self.searchBox.setPlaceholderText("搜尋音樂名稱...")
+        search_layout.addWidget(self.searchBox)
+
+        self.searchButton = PrimaryPushButton("搜尋")
+        self.searchButton.clicked.connect(self.filter_music_data)
+        search_layout.addWidget(self.searchButton)
+
+        self.resetButton = PushButton("重置")
+        self.resetButton.clicked.connect(self.reset_search_filter)
+        search_layout.addWidget(self.resetButton)
+
+        self.layout.addLayout(search_layout)
+
+        self.table = TableWidget(self)
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels([
+            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "發行日期", "難度", "提取封面"
+        ])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSortingEnabled(True)
+        self.layout.addWidget(self.table)
+
+        self.music_search_thread = MusicSearchThread()
+        self.music_search_thread.search_completed.connect(self.on_search_completed)
+        self.music_search_thread.progress_update.connect(self.update_progress)
+
+    def update_progress(self, value):
+        self.progressBar.setValue(value)
+
+    def showEvent(self, event):
+        if not self.has_searched:
+            self.searchingLabel.show()
+            self.music_search_thread.start()
+            self.has_searched = True
+
+    def on_search_completed(self, music_data):
+        self.music_data_dict = music_data
+        self.table.setRowCount(len(music_data))
+
+        for row, data in enumerate(music_data.values()):
+            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
+            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
+            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
+            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])))
+            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
+
+            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
+            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
+
+            pixmap = self.load_dds_image(data["jacket_path"])
+            if pixmap is not None:
+                label = BodyLabel()
+                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.table.setCellWidget(row, 0, label)
+            else:
+                label = BodyLabel("無法加載封面")
+                self.table.setCellWidget(row, 0, label)
+
+            self.table.setRowHeight(row, 128)
+            self.table.setColumnWidth(row, 128)
+
+            copy_button = PushButton("提取")
+            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
+            self.table.setCellWidget(row, 7, copy_button)
+
+        self.searchingLabel.hide()
+        self.progressBar.hide()
+
+    def reset_search_filter(self):
+        self.searchBox.clear()
+        self.filter_music_data(reset=True)
+
+    def filter_music_data(self, reset=False):
+        if reset:
+            filtered_data = list(self.music_data_dict.values())
+        else:
+            search_text = self.searchBox.text().strip().lower()
+            filtered_data = [
+                data for music_id, data in self.music_data_dict.items()
+                if (search_text in data["music_id"].lower() or
+                    search_text in data["music_name"].lower() or
+                    search_text in data["artist_name"].lower())
+            ]
+
+        self.table.clearContents()
+        self.table.setRowCount(len(filtered_data))
+
+        for row, data in enumerate(filtered_data):
+            self.table.setItem(row, 1, QTableWidgetItem(data["music_id"]))
+            self.table.setItem(row, 2, QTableWidgetItem(data["music_name"]))
+            self.table.setItem(row, 3, QTableWidgetItem(data["artist_name"]))
+            self.table.setItem(row, 4, QTableWidgetItem(", ".join(data["genre_names"])))
+            self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
+
+            difficulty_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
+            self.table.setItem(row, 6, QTableWidgetItem(difficulty_text))
+
+            pixmap = self.load_dds_image(data["jacket_path"])
+            if pixmap is not None:
+                label = BodyLabel()
+                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.table.setCellWidget(row, 0, label)
+            else:
+                label = BodyLabel("無法加載封面")
+                self.table.setCellWidget(row, 0, label)
+
+            self.table.setRowHeight(row, 128)
+            self.table.setColumnWidth(row, 128)
+
+            copy_button = PushButton("提取")
+            copy_button.clicked.connect(lambda _, d=data: self.copy_cover_image(d))
+            self.table.setCellWidget(row, 7, copy_button)
+
+    def load_dds_image(self, dds_path):
+        if not os.path.exists(dds_path):
+            return None
+        try:
+            img = Image.open(dds_path)
+            img = img.convert("RGBA")
+            data = img.tobytes("raw", "RGBA")
+            qimage = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+            return QPixmap.fromImage(qimage)
+        except Exception as e:
+            print(f"讀取DDS封面失敗: {dds_path}，錯誤: {e}")
+            return None
+
+    def copy_cover_image(self, data):
+        target_folder = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
+        if target_folder:
+            if not os.path.exists(target_folder):
+                os.makedirs(target_folder)
+
+            if os.path.exists(data["jacket_path"]):
+                try:
+                    target_path = os.path.join(target_folder, os.path.basename(data["jacket_path"]))
+                    shutil.copy(data["jacket_path"], target_path)
+                    print(f"成功將封面複製到: {target_path}")
+                except Exception as e:
+                    print(f"複製封面失敗: {e}")
+            else:
+                print(f"封面檔案不存在: {data['jacket_path']}")
+        else:
+            print("未選擇任何資料夾")

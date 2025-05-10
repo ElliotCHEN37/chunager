@@ -4,18 +4,65 @@ import sys
 import shutil
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal, QObject
 from qfluentwidgets import TableWidget, LargeTitleLabel, PrimaryPushButton
 
 def resource_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base_path, relative_path)
 
+class OptLoader(QObject):
+    finished = Signal(list)
+    error = Signal(str)
+
+    def run(self):
+        try:
+            config = configparser.ConfigParser()
+            base_path = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(os.path.dirname(sys.argv[0]))
+            config_path = os.path.join(base_path, "config.ini")
+            config.read(config_path)
+
+            segatools_path = config.get("GENERAL", "segatools_path", fallback=None)
+            if not segatools_path or not os.path.exists(segatools_path):
+                self.error.emit("找不到 segatools.ini")
+                return
+
+            segatools_config = configparser.ConfigParser()
+            segatools_config.read(segatools_path)
+
+            option_path = segatools_config.get("vfs", "option", fallback=None)
+            if not option_path:
+                self.error.emit("找不到 [vfs] option")
+                return
+
+            opt_dir = option_path if os.path.isabs(option_path) else os.path.join(os.path.dirname(segatools_path), option_path)
+            if not os.path.exists(opt_dir):
+                self.error.emit("找不到 option 目錄")
+                return
+
+            folder_list = []
+            a000 = os.path.normpath(os.path.join(os.path.dirname(segatools_path), "..", "data", "A000"))
+            if os.path.exists(a000):
+                folder_list.append(a000)
+
+            for f in os.listdir(opt_dir):
+                full_path = os.path.join(opt_dir, f)
+                if f.startswith('A') and os.path.isdir(full_path):
+                    folder_list.append(full_path)
+
+            self.finished.emit(folder_list)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class OptPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("optPage")
+        self.init_ui()
+        self.start_loader_thread()
 
+    def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
@@ -24,7 +71,6 @@ class OptPage(QWidget):
         titleFont.setPointSize(20)
         titleFont.setBold(True)
         titleLabel.setFont(titleFont)
-        titleLabel.setAlignment(Qt.AlignLeft)
 
         self.table = TableWidget(self)
         self.table.setColumnCount(4)
@@ -34,64 +80,27 @@ class OptPage(QWidget):
         layout.addWidget(titleLabel)
         layout.addWidget(self.table)
 
-        self.load_opt_data()
+    def start_loader_thread(self):
+        self.thread = QThread()
+        self.loader = OptLoader()
+        self.loader.moveToThread(self.thread)
 
-    def get_config_path(self):
-        if getattr(sys, 'frozen', False):
-            base_path = os.path.dirname(sys.executable)
-        else:
-            base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-        return os.path.join(base_path, "config.ini")
+        self.thread.started.connect(self.loader.run)
+        self.loader.finished.connect(self.on_data_loaded)
+        self.loader.error.connect(self.on_load_error)
+        self.loader.finished.connect(self.thread.quit)
+        self.loader.finished.connect(self.loader.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
 
-    def load_opt_data(self):
-        self.table.clearContents()
-        self.table.setRowCount(0)
+        self.thread.start()
 
-        config = configparser.ConfigParser()
-        config_path = self.get_config_path()
-        config.read(config_path)
-
-        segatools_path = config.get("GENERAL", "segatools_path", fallback=None)
-        if not segatools_path or not os.path.exists(segatools_path):
-            print("找不到 segatools.ini")
-            return
-
-        segatools_config = configparser.ConfigParser()
-        segatools_config.read(segatools_path)
-
-        option_path = segatools_config.get("vfs", "option", fallback=None)
-        if not option_path:
-            print("找不到 [vfs] option")
-            return
-
-        if os.path.isabs(option_path):
-            opt_dir = option_path
-        else:
-            opt_dir = os.path.join(os.path.dirname(segatools_path), option_path)
-
-        if not os.path.exists(opt_dir):
-            print("找不到 option 目錄")
-            return
-
-        folder_list = []
-
-        a000 = os.path.normpath(os.path.join(os.path.dirname(segatools_path), "..", "data", "A000"))
-        if os.path.exists(a000):
-            folder_list.append(a000)
-
-        for f in os.listdir(opt_dir):
-            full_path = os.path.join(opt_dir, f)
-            if f.startswith('A') and os.path.isdir(full_path):
-                folder_list.append(full_path)
-
+    def on_data_loaded(self, folder_list):
         self.table.setRowCount(len(folder_list))
-
         for row, folder_path in enumerate(folder_list):
             folder_name = os.path.basename(folder_path)
             data_conf_path = os.path.join(folder_path, "data.conf")
 
             self.table.setItem(row, 0, QTableWidgetItem(folder_name))
-
             if os.path.exists(data_conf_path):
                 self.table.setItem(row, 1, QTableWidgetItem("官方更新"))
                 version = self.read_version_from_data_conf(data_conf_path)
@@ -101,8 +110,11 @@ class OptPage(QWidget):
                 self.table.setItem(row, 2, QTableWidgetItem("\\"))
 
             delete_button = PrimaryPushButton("刪除", self)
-            delete_button.clicked.connect(lambda checked, path=folder_path, name=folder_name: self.confirm_delete_folder(path, name))
+            delete_button.clicked.connect(lambda checked, p=folder_path, n=folder_name: self.confirm_delete_folder(p, n))
             self.table.setCellWidget(row, 3, delete_button)
+
+    def on_load_error(self, message):
+        QMessageBox.critical(self, "載入錯誤", message)
 
     def confirm_delete_folder(self, path, folder_name):
         reply = QMessageBox.warning(
@@ -120,19 +132,16 @@ class OptPage(QWidget):
             try:
                 shutil.rmtree(path)
                 print(f"已刪除資料夾: {path}")
-                self.load_opt_data()
+                self.start_loader_thread()
             except Exception as e:
                 print(f"刪除失敗: {e}")
 
     def read_version_from_data_conf(self, conf_path):
         version_config = configparser.ConfigParser()
-        with open(conf_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-        content = "[dummy]\n" + "".join(lines)
-        version_config.read_string(content)
-
         try:
+            with open(conf_path, "r", encoding="utf-8") as f:
+                content = "[dummy]\n" + f.read()
+            version_config.read_string(content)
             major = version_config.getint("Version", "VerMajor", fallback=0)
             minor = version_config.getint("Version", "VerMinor", fallback=0)
             release = version_config.getint("Version", "VerRelease", fallback=0)

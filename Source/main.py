@@ -51,6 +51,7 @@ def load_colored_svg_icon(path: str, color: str) -> QIcon:
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon(resource_path("icon.ico")))
         self.setWindowTitle("CHUNAGER")
         self.resize(1000, 750)
 

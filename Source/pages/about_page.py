@@ -31,7 +31,7 @@ class AboutPage(QWidget):
 
         authorLabel = CaptionLabel(
             "作者：Elliot<br>"
-            "版本：INTERNAL VERSION<br>"
+            "版本：1.0<br>"
             'GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>'
         )
         authorFont = QFont()

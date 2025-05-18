@@ -18,11 +18,9 @@ from pages.setting_page import SettingPage
 from pages.about_page import AboutPage
 from pages.hdd_page import HDDPage
 
-
 def get_path(rel_path: str) -> str:
     base = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base, rel_path)
-
 
 def is_dark_mode() -> bool:
     try:
@@ -75,7 +73,6 @@ class MainWindow(FluentWindow):
             config["DISPLAY"] = {"theme": "AUTO"}
             with open(config_path, "w", encoding="utf-8") as f:
                 config.write(f)
-            print(f"已建立config.ini：{config_path}")
         else:
             config.read(config_path, encoding="utf-8")
 

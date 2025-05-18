@@ -5,7 +5,7 @@ import shutil
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox
 from PySide6.QtCore import Qt, QThread, Signal, QObject
-from qfluentwidgets import TableWidget, LargeTitleLabel, PrimaryPushButton
+from qfluentwidgets import TableWidget, LargeTitleLabel, PushButton
 
 
 def get_path(rel_path: str) -> str:
@@ -112,7 +112,7 @@ class OptPage(QWidget):
                 self.table.setItem(row, 1, QTableWidgetItem("自製更新"))
                 self.table.setItem(row, 2, QTableWidgetItem("\\"))
 
-            del_btn = PrimaryPushButton("刪除", self)
+            del_btn = PushButton("刪除", self)
             del_btn.clicked.connect(lambda checked, p=path, n=name: self.ask_delete(p, n))
             self.table.setCellWidget(row, 3, del_btn)
 

@@ -4,7 +4,7 @@ import re
 import shutil
 import sys
 import xml.etree.ElementTree as ET
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
 from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt, QThread, Signal
 from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
@@ -38,7 +38,7 @@ class CharaSearchThread(QThread):
                 if current_opt_mtime == last_opt_mtime:
                     need_rescan = False
             except Exception as e:
-                print(f"讀取索引檔案錯誤: {e}")
+                QMessageBox.critical(self, "讀取索引檔案錯誤", e)
 
         if need_rescan:
             xml_paths = self.find_xmls()
@@ -58,7 +58,7 @@ class CharaSearchThread(QThread):
                         "chara_data": chara_data
                     }, f, ensure_ascii=False, indent=2)
             except Exception as e:
-                print(f"寫入索引檔案錯誤: {e}")
+                QMessageBox.critical(self, "寫入索引檔案錯誤", e)
 
         self.found.emit(chara_data)
 
@@ -316,7 +316,7 @@ class CharacterPage(QWidget):
 
     def load_dds(self, dds_path):
         if not dds_path or not os.path.exists(dds_path):
-            print(f"DDS圖像路徑不存在: {dds_path}")
+            QMessageBox.warning(self, "DDS圖像路徑不存在", dds_path)
             return None
 
         try:
@@ -325,7 +325,7 @@ class CharacterPage(QWidget):
             qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
             return QPixmap.fromImage(qimg)
         except Exception as e:
-            print(f"讀取DDS圖像失敗: {dds_path}，錯誤: {e}")
+            QMessageBox.critical(self, "讀取DDS圖像失敗", f"路徑: {dds_path}, 錯誤: {e}")
 
             base, ext = os.path.splitext(dds_path)
             alt_path = base + (".DDS" if ext.lower() == ".dds" else ".dds")
@@ -336,24 +336,24 @@ class CharacterPage(QWidget):
                     qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
                     return QPixmap.fromImage(qimg)
                 except Exception as e2:
-                    print(f"讀取備用DDS圖像也失敗: {alt_path}，錯誤: {e2}")
+                    QMessageBox.critical(self, "備用DDS圖像讀取失敗", f"路徑: {alt_path}, 錯誤: {e2}")
 
         return None
 
     def extract_image(self, data):
         target_dir = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
         if not target_dir:
-            print("未選擇任何資料夾")
+            QMessageBox.warning(self, "錯誤", "未選擇任何資料夾")
             return
 
         img_path = data["image_path"]
         if not os.path.exists(img_path):
-            print(f"角色圖像檔案不存在: {img_path}")
+            QMessageBox.warning(self, "角色圖像檔案不存在", f"{img_path}")
             return
 
         try:
             target = os.path.join(target_dir, os.path.basename(img_path))
             shutil.copy(img_path, target)
-            print(f"成功將角色圖像複製到: {target}")
+            QMessageBox.information(self, "成功", f"成功將角色圖像複製到: {target}")
         except Exception as e:
-            print(f"複製角色圖像失敗: {e}")
+            QMessageBox.critical(self, "複製角色圖像失敗", e)

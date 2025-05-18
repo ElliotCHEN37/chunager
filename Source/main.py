@@ -18,11 +18,13 @@ from pages.setting_page import SettingPage
 from pages.about_page import AboutPage
 from pages.hdd_page import HDDPage
 
-def resource_path(relative_path: str) -> str:
-    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
-    return os.path.join(base_path, relative_path)
 
-def is_system_dark_theme() -> bool:
+def get_path(rel_path: str) -> str:
+    base = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base, rel_path)
+
+
+def is_dark_mode() -> bool:
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                             r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
@@ -31,13 +33,14 @@ def is_system_dark_theme() -> bool:
     except Exception:
         return False
 
-def load_colored_svg_icon(path: str, color: str) -> QIcon:
+
+def svg_to_icon(path: str, color: str) -> QIcon:
     with open(path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
     svg_content = svg_content.replace("fill=\"#e3e3e3\"", f"fill=\"{color}\"")
-
     svg_bytes = QByteArray(svg_content.encode("utf-8"))
+
     renderer = QSvgRenderer(svg_bytes)
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.transparent)
@@ -48,21 +51,23 @@ def load_colored_svg_icon(path: str, color: str) -> QIcon:
 
     return QIcon(pixmap)
 
+
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowIcon(QIcon(resource_path("icon.ico")))
+        self.setWindowIcon(QIcon(get_path("icon.ico")))
         self.setWindowTitle("CHUNAGER")
         self.resize(1000, 750)
 
         self.config = self.load_config()
-        self.setup_theme()
-        self.init_pages()
-        self.init_navigation()
+        self.apply_theme()
+        self.setup_pages()
+        self.setup_nav()
 
     def load_config(self):
         config = configparser.ConfigParser()
-        app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(os.path.dirname(__file__))
+        app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
+            os.path.dirname(__file__))
         config_path = os.path.join(app_dir, "config.ini")
 
         if not os.path.exists(config_path):
@@ -70,28 +75,24 @@ class MainWindow(FluentWindow):
             config["DISPLAY"] = {"theme": "AUTO"}
             with open(config_path, "w", encoding="utf-8") as f:
                 config.write(f)
-            print(f"已建立預設 config.ini：{config_path}")
+            print(f"已建立config.ini：{config_path}")
         else:
             config.read(config_path, encoding="utf-8")
 
         self.config_path = config_path
         return config
 
-    def setup_theme(self):
-        theme_str = self.config.get("DISPLAY", "theme", fallback="AUTO").upper()
-        if theme_str == "AUTO":
-            is_dark = is_system_dark_theme()
-            self.current_theme_color = "#e3e3e3" if is_dark else "#000000"
-            setTheme(Theme.DARK if is_dark else Theme.LIGHT)
-        else:
-            is_dark = theme_str == "DARK"
-            self.current_theme_color = "#e3e3e3" if is_dark else "#000000"
-            setTheme(Theme.DARK if is_dark else Theme.LIGHT)
+    def apply_theme(self):
+        theme_setting = self.config.get("DISPLAY", "theme", fallback="AUTO").upper()
+        use_dark = is_dark_mode() if theme_setting == "AUTO" else theme_setting == "DARK"
+
+        self.theme_color = "#e3e3e3" if use_dark else "#000000"
+        setTheme(Theme.DARK if use_dark else Theme.LIGHT)
 
     def get_icon(self, name: str) -> QIcon:
-        return load_colored_svg_icon(resource_path(f"img/{name}.svg"), self.current_theme_color)
+        return svg_to_icon(get_path(f"img/{name}.svg"), self.theme_color)
 
-    def init_pages(self):
+    def setup_pages(self):
         self.pages = {
             "首頁": (HomePage(), self.get_icon("home"), NavigationItemPosition.TOP),
             "OPT": (OptPage(), self.get_icon("opt"), NavigationItemPosition.TOP),
@@ -105,10 +106,11 @@ class MainWindow(FluentWindow):
             "關於": (AboutPage(), self.get_icon("info"), NavigationItemPosition.BOTTOM)
         }
 
-    def init_navigation(self):
+    def setup_nav(self):
         for name, (page, icon, position) in self.pages.items():
             self.addSubInterface(page, icon, name, position)
         self.navigationInterface.setCurrentItem("首頁")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

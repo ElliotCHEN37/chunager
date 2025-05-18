@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPixmap
 from qfluentwidgets import LargeTitleLabel, TitleLabel, StrongBodyLabel, CaptionLabel
 
-def resource_path(relative_path: str) -> str:
+def get_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base_path, relative_path)
 
@@ -18,7 +18,7 @@ class HomePage(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         logoLabel = TitleLabel(self)
-        pixmap = QPixmap(resource_path("img/logo.jpg"))
+        pixmap = QPixmap(get_path("img/logo.jpg"))
         logoLabel.setPixmap(pixmap)
         logoLabel.setAlignment(Qt.AlignCenter)
 

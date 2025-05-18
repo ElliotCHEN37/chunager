@@ -6,7 +6,7 @@ from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
 import webbrowser
 
-def resource_path(relative_path: str) -> str:
+def get_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     return os.path.join(base_path, relative_path)
 
@@ -25,13 +25,13 @@ class HDDPage(QWidget):
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        openButton = PrimaryPushButton(QIcon(resource_path("img/web.svg")), "打開 Evil Leaker Data Center")
+        openButton = PrimaryPushButton(QIcon(get_path("img/web.svg")), "打開 Evil Leaker Data Center")
         openButton.clicked.connect(self.open_manual)
 
         notice = HeaderCardWidget()
 
         notice.setTitle("WOOPS")
-        notice.ErrorIcon = IconWidget(QIcon(resource_path("img/error.svg")))
+        notice.ErrorIcon = IconWidget(QIcon(get_path("img/error.svg")))
         notice.infoLabel = BodyLabel("由於某些技術原因，暫時不支援內嵌網站")
 
         notice.vBoxLayout = QVBoxLayout()

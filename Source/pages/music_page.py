@@ -4,7 +4,7 @@ import re
 import shutil
 import sys
 import xml.etree.ElementTree as ET
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
 from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt, QThread, Signal
 from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
@@ -38,7 +38,7 @@ class MusicScanner(QThread):
                 if current_opt_mtime == last_opt_mtime:
                     need_rescan = False
             except Exception as e:
-                print(f"讀取索引檔案錯誤: {e}")
+                QMessageBox.critical(self, "讀取索引檔案錯誤", e)
 
         if need_rescan:
             xml_paths = self.find_xmls()
@@ -59,7 +59,7 @@ class MusicScanner(QThread):
                         "music_data": music_data
                     }, f, ensure_ascii=False, indent=2)
             except Exception as e:
-                print(f"寫入索引檔案錯誤: {e}")
+                QMessageBox.critical(self, "寫入索引檔案錯誤", e)
 
         self.scan_done.emit(music_data)
 
@@ -189,7 +189,7 @@ class MusicScanner(QThread):
                     "level": level
                 })
 
-        jacket = f"CHU_UI_Jacket_{int(music_id):04d}.dds"
+        jacket = get_text(".//jaketFile/path")
         jacket_path = os.path.join(os.path.dirname(path), jacket)
 
         return {
@@ -324,13 +324,13 @@ class MusicPage(QWidget):
             qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
             return QPixmap.fromImage(qimg)
         except Exception as e:
-            print(f"讀取DDS封面失敗: {path}，錯誤: {e}")
+            QMessageBox.critical(self, "讀取DDS封面失敗", f"路徑: {path}, 錯誤: {e}")
             return None
 
     def save_cover(self, data):
         target = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
         if not target:
-            print("未選擇任何資料夾")
+            QMessageBox.critical(self, "錯誤", "未選擇任何資料夾")
             return
 
         if not os.path.exists(target):
@@ -341,8 +341,8 @@ class MusicPage(QWidget):
             try:
                 dst = os.path.join(target, os.path.basename(src))
                 shutil.copy(src, dst)
-                print(f"成功將封面複製到: {dst}")
+                QMessageBox.information(self, "成功", f"已複製至: {dst}")
             except Exception as e:
-                print(f"複製封面失敗: {e}")
+                QMessageBox.critical(self, "複製封面失敗", e)
         else:
-            print(f"封面檔案不存在: {src}")
+            QMessageBox.warning(self, "封面檔案不存在", src)

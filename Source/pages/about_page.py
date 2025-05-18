@@ -11,58 +11,48 @@ class AboutPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = LargeTitleLabel("關於 CHUNAGER")
-        titleFont = QFont()
-        titleFont.setPointSize(20)
-        titleFont.setBold(True)
-        titleLabel.setFont(titleFont)
-        titleLabel.setAlignment(Qt.AlignLeft)
+        def styled_label(label_class, text, point_size, rich=False):
+            label = label_class(text)
+            font = QFont()
+            font.setPointSize(point_size)
+            label.setFont(font)
+            label.setAlignment(Qt.AlignLeft)
+            label.setWordWrap(True)
+            if rich:
+                label.setTextFormat(Qt.RichText)
+                label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+                label.setOpenExternalLinks(True)
+            return label
 
-        descriptionLabel = StrongBodyLabel(
-            "CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE)設計的管理工具\n"
+        layout.addWidget(styled_label(LargeTitleLabel, "關於 CHUNAGER", 20))
+        layout.addSpacing(10)
+
+        layout.addWidget(styled_label(
+            StrongBodyLabel,
+            "CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 設計的管理工具\n"
             "提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n"
-            "協助您更輕鬆地整理與優化遊戲內容"
-        )
-        descriptionFont = QFont()
-        descriptionFont.setPointSize(12)
-        descriptionLabel.setFont(descriptionFont)
-        descriptionLabel.setAlignment(Qt.AlignLeft)
-        descriptionLabel.setWordWrap(True)
-
-        authorLabel = CaptionLabel(
-            "作者：Elliot<br>"
-            "版本：1.0<br>"
-            'GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>'
-        )
-        authorFont = QFont()
-        authorFont.setPointSize(10)
-        authorLabel.setFont(authorFont)
-        authorLabel.setAlignment(Qt.AlignLeft)
-        authorLabel.setWordWrap(True)
-        authorLabel.setTextFormat(Qt.RichText)
-        authorLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        authorLabel.setOpenExternalLinks(True)
-
-        licenseLabel = CaptionLabel(
-            "<br>免責聲明：<br>"
-            "本程式為個人開發，與任何和Evil Leaker, SEGA, CHUNITHM 官方團隊或相關人物及事項無任何關係。<br>"
-            "請遵守當地法律使用。<br>"
-            '本程式使用MIT授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。<br>'
-            "使用本程式所造成的一切後果，作者不承擔任何責任。"
-        )
-        licenseFont = QFont()
-        licenseFont.setPointSize(10)
-        licenseLabel.setFont(licenseFont)
-        licenseLabel.setAlignment(Qt.AlignLeft)
-        licenseLabel.setWordWrap(True)
-        licenseLabel.setTextFormat(Qt.RichText)
-        licenseLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        licenseLabel.setOpenExternalLinks(True)
-
-        layout.addWidget(titleLabel)
-        layout.addSpacing(10)
-        layout.addWidget(descriptionLabel)
+            "協助您更輕鬆地整理與優化遊戲內容",
+            12
+        ))
         layout.addSpacing(15)
-        layout.addWidget(authorLabel)
+
+        layout.addWidget(styled_label(
+            CaptionLabel,
+            "作者：Elliot<br>"
+            "版本：1.1<br>"
+            'GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>',
+            10,
+            rich=True
+        ))
         layout.addSpacing(10)
-        layout.addWidget(licenseLabel)
+
+        layout.addWidget(styled_label(
+            CaptionLabel,
+            "<br>免責聲明：<br>"
+            "本程式為個人開發，與任何和 Evil Leaker、SEGA、CHUNITHM 官方團隊或相關人物及事項無任何關係。<br>"
+            "請遵守當地法律使用。<br>"
+            '本程式使用 MIT 授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。<br>'
+            "使用本程式所造成的一切後果，作者不承擔任何責任。",
+            10,
+            rich=True
+        ))

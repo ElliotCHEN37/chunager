@@ -134,10 +134,10 @@ class OptPage(QWidget):
         if os.path.exists(path) and os.path.isdir(path):
             try:
                 shutil.rmtree(path)
-                print(f"已刪除資料夾: {path}")
+                QMessageBox.information(self, "已刪除資料夾", path)
                 self.load_data()
             except Exception as e:
-                print(f"刪除失敗: {e}")
+                QMessageBox.critical(self, "刪除失敗", e)
 
     def get_version(self, conf_path):
         ver_cfg = configparser.ConfigParser()
@@ -150,5 +150,5 @@ class OptPage(QWidget):
             release = ver_cfg.getint("Version", "VerRelease", fallback=0)
             return f"{major}.{minor}.{release}"
         except Exception as e:
-            print(f"讀取版本失敗: {e}")
+            QMessageBox.critical(self, "讀取版本失敗", e)
             return "未知"

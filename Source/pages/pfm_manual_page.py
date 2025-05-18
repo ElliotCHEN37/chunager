@@ -1,6 +1,6 @@
 import os
 import sys
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
@@ -32,7 +32,7 @@ class PFMManualPage(QWidget):
 
         notice.setTitle("WOOPS")
         notice.ErrorIcon = IconWidget(QIcon(get_path("img/error.svg")))
-        notice.infoLabel = BodyLabel("由於某些技術原因，暫時不支援內嵌網站")
+        notice.infoLabel = BodyLabel("請自行解密")
 
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()
@@ -56,4 +56,5 @@ class PFMManualPage(QWidget):
         layout.addWidget(notice)
 
     def open_manual(self):
-        webbrowser.open("https://performai.evilleaker.com/manual/games/chunithm/setup/")
+        QMessageBox.information(self, "請解密兩次", "看看終端輸出")
+        print("YUhSMGNITTZMeTl3WlhKbWIzSnRZV2t1WlhacGJHeGxZV3RsY2k1amIyMHZiV0Z1ZFdGc0wyZGhiV1Z6TDJOb2RXNXBkR2h0TDNObGRIVndMdz09")

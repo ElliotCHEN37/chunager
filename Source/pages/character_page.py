@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import shutil
@@ -21,14 +22,43 @@ class CharaSearchThread(QThread):
     progress = Signal(int)
 
     def run(self):
-        xml_paths = self.find_xmls()
+        index_path = self.get_index_path()
+        need_rescan = True
         chara_data = {}
 
-        total = len(xml_paths)
-        for idx, xml_path in enumerate(xml_paths):
-            data = self.parse_xml(xml_path)
-            chara_data[data["chara_id"]] = data
-            self.progress.emit(int(((idx + 1) / total) * 100))
+        if os.path.exists(index_path):
+            try:
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    index_data = json.load(f)
+                last_opt_mtime = index_data.get("opt_last_modified", 0)
+                chara_data = index_data.get("chara_data", {})
+
+                current_opt_mtime = self.get_opt_last_modified_time()
+
+                if current_opt_mtime == last_opt_mtime:
+                    need_rescan = False
+            except Exception as e:
+                print(f"讀取索引檔案錯誤: {e}")
+
+        if need_rescan:
+            xml_paths = self.find_xmls()
+            chara_data = {}
+
+            total = len(xml_paths)
+            for idx, xml_path in enumerate(xml_paths):
+                data = self.parse_xml(xml_path)
+                chara_data[data["chara_id"]] = data
+                self.progress.emit(int(((idx + 1) / total) * 100))
+
+            current_opt_mtime = self.get_opt_last_modified_time()
+            try:
+                with open(index_path, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        "opt_last_modified": current_opt_mtime,
+                        "chara_data": chara_data
+                    }, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"寫入索引檔案錯誤: {e}")
 
         self.found.emit(chara_data)
 
@@ -36,6 +66,44 @@ class CharaSearchThread(QThread):
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
             os.path.dirname(sys.argv[0]))
         return os.path.join(base, "config.ini")
+
+    def get_index_path(self):
+        base_dir = os.path.dirname(self.get_cfg_path())
+        return os.path.join(base_dir, "character_index.json")
+
+    def get_opt_last_modified_time(self):
+        cfg_path = self.get_cfg_path()
+        cfg = configparser.ConfigParser()
+        cfg.read(cfg_path)
+
+        sega_path = cfg.get("GENERAL", "segatools_path", fallback=None)
+        if not sega_path or not os.path.exists(sega_path):
+            return 0
+
+        sega_cfg = configparser.ConfigParser()
+        sega_cfg.read(sega_path)
+
+        opt_rel_path = sega_cfg.get("vfs", "option", fallback=None)
+        if not opt_rel_path:
+            return 0
+
+        if os.path.isabs(opt_rel_path):
+            opt_path = opt_rel_path
+        else:
+            opt_path = os.path.normpath(os.path.join(os.path.dirname(sega_path), opt_rel_path))
+
+        max_mtime = 0
+        if os.path.isdir(opt_path):
+            for root, dirs, files in os.walk(opt_path):
+                for name in files:
+                    try:
+                        full_path = os.path.join(root, name)
+                        mtime = os.path.getmtime(full_path)
+                        if mtime > max_mtime:
+                            max_mtime = mtime
+                    except Exception:
+                        pass
+        return max_mtime
 
     def find_xmls(self):
         result = []
@@ -102,7 +170,7 @@ class CharaSearchThread(QThread):
         for rank in root.findall(".//ranks/CharaRankData"):
             idx = rank.findtext("index", "0")
             reward = rank.find(".//rewardSkillSeed/rewardSkillSeed/str")
-            if reward is not None:
+            if reward is not None and reward.text != "Invalid":
                 rewards.append({
                     "rank": idx,
                     "reward_str": reward.text

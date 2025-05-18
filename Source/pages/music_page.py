@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import shutil
@@ -21,15 +22,44 @@ class MusicScanner(QThread):
     progress = Signal(int)
 
     def run(self):
-        xml_paths = self.find_xmls()
+        index_path = self.get_index_path()
+        need_rescan = True
         music_data = {}
 
-        total = len(xml_paths)
-        for idx, path in enumerate(xml_paths):
-            data = self.parse_xml(path)
-            music_data[data["music_id"]] = data
-            prog = int(((idx + 1) / total) * 100)
-            self.progress.emit(prog)
+        if os.path.exists(index_path):
+            try:
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    index_data = json.load(f)
+                last_opt_mtime = index_data.get("opt_last_modified", 0)
+                music_data = index_data.get("music_data", {})
+
+                current_opt_mtime = self.get_opt_mod_time()
+
+                if current_opt_mtime == last_opt_mtime:
+                    need_rescan = False
+            except Exception as e:
+                print(f"讀取索引檔案錯誤: {e}")
+
+        if need_rescan:
+            xml_paths = self.find_xmls()
+            music_data = {}
+
+            total = len(xml_paths)
+            for idx, path in enumerate(xml_paths):
+                data = self.parse_xml(path)
+                music_data[data["music_id"]] = data
+                prog = int(((idx + 1) / total) * 100)
+                self.progress.emit(prog)
+
+            current_opt_mtime = self.get_opt_mod_time()
+            try:
+                with open(index_path, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        "opt_last_modified": current_opt_mtime,
+                        "music_data": music_data
+                    }, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"寫入索引檔案錯誤: {e}")
 
         self.scan_done.emit(music_data)
 
@@ -39,6 +69,44 @@ class MusicScanner(QThread):
         else:
             base = os.path.abspath(os.path.dirname(sys.argv[0]))
         return os.path.join(base, "config.ini")
+
+    def get_index_path(self):
+        base_dir = os.path.dirname(self.get_cfg_path())
+        return os.path.join(base_dir, "music_index.json")
+
+    def get_opt_mod_time(self):
+        cfg_path = self.get_cfg_path()
+        cfg = configparser.ConfigParser()
+        cfg.read(cfg_path)
+
+        segatools = cfg.get("GENERAL", "segatools_path", fallback=None)
+        if not segatools or not os.path.exists(segatools):
+            return 0
+
+        st_cfg = configparser.ConfigParser()
+        st_cfg.read(segatools)
+
+        opt_rel_path = st_cfg.get("vfs", "option", fallback=None)
+        if not opt_rel_path:
+            return 0
+
+        if os.path.isabs(opt_rel_path):
+            opt_path = opt_rel_path
+        else:
+            opt_path = os.path.normpath(os.path.join(os.path.dirname(segatools), opt_rel_path))
+
+        max_mtime = 0
+        if os.path.isdir(opt_path):
+            for root, dirs, files in os.walk(opt_path):
+                for name in files:
+                    full_path = os.path.join(root, name)
+                    try:
+                        mtime = os.path.getmtime(full_path)
+                        if mtime > max_mtime:
+                            max_mtime = mtime
+                    except Exception:
+                        pass
+        return max_mtime
 
     def find_xmls(self):
         results = []
@@ -134,7 +202,6 @@ class MusicScanner(QThread):
             "fumens": charts
         }
 
-
 class MusicPage(QWidget):
     def __init__(self):
         super().__init__()
@@ -174,7 +241,7 @@ class MusicPage(QWidget):
         self.table = TableWidget(self)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "發行日期", "難度", "提取封面"
+            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "日期", "難度", "提取封面"
         ])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSortingEnabled(True)

@@ -165,3 +165,5 @@ lyrics/
 config.json
 venv_lin/
 venv_win/
+/Source/character_index.json
+/Source/music_index.json

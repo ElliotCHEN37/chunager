@@ -1,15 +1,16 @@
+import configparser
 import json
 import os
 import re
 import shutil
 import sys
 import xml.etree.ElementTree as ET
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
-from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt, QThread, Signal
-from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
-import configparser
+
 from PIL import Image
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
+from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
+from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
 
 
 def get_path(rel_path: str) -> str:
@@ -17,50 +18,170 @@ def get_path(rel_path: str) -> str:
     return os.path.join(base, rel_path)
 
 
+class ImageLoaderThread(QThread):
+    image_loaded = Signal(int, QPixmap)  # row, pixmap
+
+    def __init__(self, row, dds_path):
+        super().__init__()
+        self.row = row
+        self.dds_path = dds_path
+
+    def run(self):
+        pixmap = self.load_dds(self.dds_path)
+        if pixmap:
+            self.image_loaded.emit(self.row, pixmap)
+
+    def load_dds(self, dds_path):
+        if not dds_path or not os.path.exists(dds_path):
+            return None
+
+        try:
+            img = Image.open(dds_path).convert("RGBA")
+            data = img.tobytes("raw", "RGBA")
+            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+            return QPixmap.fromImage(qimg)
+        except Exception:
+            # 尝试备用路径
+            base, ext = os.path.splitext(dds_path)
+            alt_path = base + (".DDS" if ext.lower() == ".dds" else ".dds")
+            if os.path.exists(alt_path):
+                try:
+                    img = Image.open(alt_path).convert("RGBA")
+                    data = img.tobytes("raw", "RGBA")
+                    qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+                    return QPixmap.fromImage(qimg)
+                except Exception:
+                    pass
+        return None
+
+
+class FileOperationThread(QThread):
+    operation_completed = Signal(bool, str)  # success, message
+
+    def __init__(self, operation_type, **kwargs):
+        super().__init__()
+        self.operation_type = operation_type
+        self.kwargs = kwargs
+
+    def run(self):
+        if self.operation_type == "extract_image":
+            self.extract_image()
+        elif self.operation_type == "rebuild_index":
+            self.rebuild_index()
+        elif self.operation_type == "reload_index":
+            self.reload_index()
+
+    def extract_image(self):
+        try:
+            img_path = self.kwargs['img_path']
+            target_dir = self.kwargs['target_dir']
+
+            if not os.path.exists(img_path):
+                self.operation_completed.emit(False, f"角色圖像檔案不存在: {img_path}")
+                return
+
+            target = os.path.join(target_dir, os.path.basename(img_path))
+            shutil.copy(img_path, target)
+            self.operation_completed.emit(True, f"成功將角色圖像複製到: {target}")
+        except Exception as e:
+            self.operation_completed.emit(False, f"複製角色圖像失敗: {str(e)}")
+
+    def rebuild_index(self):
+        try:
+            index_path = self.kwargs['index_path']
+            if os.path.exists(index_path):
+                os.remove(index_path)
+            self.operation_completed.emit(True, "索引文件已删除，准备重建")
+        except Exception as e:
+            self.operation_completed.emit(False, f"無法刪除索引檔案: {str(e)}")
+
+    def reload_index(self):
+        try:
+            index_path = self.kwargs['index_path']
+            if not os.path.exists(index_path):
+                self.operation_completed.emit(False, "尚未建立索引，請先使用「重建索引」。")
+                return
+
+            with open(index_path, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+                chara_data = index_data.get("chara_data", {})
+
+            mtime = os.path.getmtime(index_path)
+            from datetime import datetime
+            timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+
+            self.operation_completed.emit(True, f"reload_success|{json.dumps(chara_data)}|{timestamp}")
+        except Exception as e:
+            self.operation_completed.emit(False, f"讀取索引失敗: {str(e)}")
+
+
 class CharaSearchThread(QThread):
     found = Signal(dict)
     progress = Signal(int)
+    error = Signal(str, str)
+    status_update = Signal(str)
 
     def run(self):
-        index_path = self.get_index_path()
-        need_rescan = True
-        chara_data = {}
-
-        if os.path.exists(index_path):
-            try:
-                with open(index_path, 'r', encoding='utf-8') as f:
-                    index_data = json.load(f)
-                last_opt_mtime = index_data.get("opt_last_modified", 0)
-                chara_data = index_data.get("chara_data", {})
-
-                current_opt_mtime = self.get_opt_last_modified_time()
-
-                if current_opt_mtime == last_opt_mtime:
-                    need_rescan = False
-            except Exception as e:
-                QMessageBox.critical(self, "讀取索引檔案錯誤", e)
-
-        if need_rescan:
-            xml_paths = self.find_xmls()
+        try:
+            self.status_update.emit("正在檢查索引...")
+            index_path = self.get_index_path()
+            need_rescan = True
             chara_data = {}
 
-            total = len(xml_paths)
-            for idx, xml_path in enumerate(xml_paths):
-                data = self.parse_xml(xml_path)
-                chara_data[data["chara_id"]] = data
-                self.progress.emit(int(((idx + 1) / total) * 100))
+            if os.path.exists(index_path):
+                try:
+                    with open(index_path, 'r', encoding='utf-8') as f:
+                        index_data = json.load(f)
+                    last_opt_mtime = index_data.get("opt_last_modified", 0)
+                    chara_data = index_data.get("chara_data", {})
 
-            current_opt_mtime = self.get_opt_last_modified_time()
-            try:
-                with open(index_path, 'w', encoding='utf-8') as f:
-                    json.dump({
-                        "opt_last_modified": current_opt_mtime,
-                        "chara_data": chara_data
-                    }, f, ensure_ascii=False, indent=2)
-            except Exception as e:
-                QMessageBox.critical(self, "寫入索引檔案錯誤", e)
+                    current_opt_mtime = self.get_opt_last_modified_time()
 
-        self.found.emit(chara_data)
+                    if current_opt_mtime == last_opt_mtime:
+                        need_rescan = False
+                        self.status_update.emit("使用現有索引...")
+                except Exception as e:
+                    self.error.emit("讀取索引檔案錯誤", str(e))
+                    return
+
+            if need_rescan:
+                self.status_update.emit("正在掃描XML檔案...")
+                xml_paths = self.find_xmls()
+                chara_data = {}
+
+                total = len(xml_paths)
+                if total == 0:
+                    self.status_update.emit("未找到任何角色檔案")
+                    self.found.emit({})
+                    return
+
+                for idx, xml_path in enumerate(xml_paths):
+                    try:
+                        data = self.parse_xml(xml_path)
+                        chara_data[data["chara_id"]] = data
+                        progress_val = int(((idx + 1) / total) * 100)
+                        self.progress.emit(progress_val)
+                        self.status_update.emit(f"正在處理: {data['chara_name']} ({idx + 1}/{total})")
+                    except Exception as e:
+                        print(f"解析XML失敗: {xml_path}, 錯誤: {e}")
+                        continue
+
+                self.status_update.emit("正在保存索引...")
+                current_opt_mtime = self.get_opt_last_modified_time()
+                try:
+                    with open(index_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "opt_last_modified": current_opt_mtime,
+                            "chara_data": chara_data
+                        }, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    self.error.emit("寫入索引檔案錯誤", str(e))
+                    return
+
+            self.status_update.emit("完成!")
+            self.found.emit(chara_data)
+        except Exception as e:
+            self.error.emit("搜索過程中發生錯誤", str(e))
 
     def get_cfg_path(self):
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
@@ -201,6 +322,8 @@ class CharacterPage(QWidget):
         self.setObjectName("characterPage")
         self.has_searched = False
         self.chara_data = {}
+        self.image_loaders = {}
+        self.current_file_operation = None
 
         self.init_ui()
         self.setup_search_thread()
@@ -220,6 +343,10 @@ class CharacterPage(QWidget):
         self.progress.setRange(0, 100)
         self.layout.addWidget(self.progress)
 
+        self.index_status = BodyLabel("索引狀態：尚未建立")
+        self.index_status.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.index_status)
+
         search_layout = QHBoxLayout()
         self.searchBox = LineEdit(self)
         self.searchBox.setPlaceholderText("搜尋角色名稱...")
@@ -235,6 +362,18 @@ class CharacterPage(QWidget):
 
         self.layout.addLayout(search_layout)
 
+        btn_layout = QHBoxLayout()
+
+        self.rebuild_btn = PrimaryPushButton("重建索引")
+        self.rebuild_btn.clicked.connect(self.rebuild_index)
+        btn_layout.addWidget(self.rebuild_btn)
+
+        self.reload_btn = PrimaryPushButton("重新載入")
+        self.reload_btn.clicked.connect(self.reload_index)
+        btn_layout.addWidget(self.reload_btn)
+
+        self.layout.addLayout(btn_layout)
+
         self.table = TableWidget(self)
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
@@ -248,21 +387,46 @@ class CharacterPage(QWidget):
         self.search_thread = CharaSearchThread()
         self.search_thread.found.connect(self.on_search_done)
         self.search_thread.progress.connect(self.update_progress)
+        self.search_thread.error.connect(self.on_search_error)
+        self.search_thread.status_update.connect(self.update_status_message)
 
     def update_progress(self, value):
         self.progress.setValue(value)
 
+    def update_status_message(self, message):
+        self.searchMsg.setText(message)
+
+    def on_search_error(self, title, message):
+        QMessageBox.critical(self, title, message)
+        self.searchMsg.hide()
+        self.progress.hide()
+
     def showEvent(self, event):
         if not self.has_searched:
             self.searchMsg.show()
-            self.search_thread.start()
+            self.progress.show()
+            self.progress.setValue(0)
+            QTimer.singleShot(100, self.start_search)
             self.has_searched = True
 
-    def on_search_done(self, data):
-        self.chara_data = data
-        self.update_table(list(data.values()))
+    def start_search(self):
+        if not self.search_thread.isRunning():
+            self.search_thread.start()
+
+    def on_search_done(self, chara_data):
+        self.chara_data = chara_data
+        self.update_table(list(chara_data.values()))
         self.searchMsg.hide()
         self.progress.hide()
+
+        index_path = self.search_thread.get_index_path()
+        if os.path.exists(index_path):
+            mtime = os.path.getmtime(index_path)
+            from datetime import datetime
+            timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+            self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+        else:
+            self.index_status.setText("索引狀態：尚未建立")
 
     def reset_filter(self):
         self.searchBox.clear()
@@ -286,6 +450,11 @@ class CharacterPage(QWidget):
         self.update_table(filtered)
 
     def update_table(self, data_list):
+        for loader in self.image_loaders.values():
+            if loader.isRunning():
+                loader.terminate()
+        self.image_loaders.clear()
+
         self.table.clearContents()
         self.table.setRowCount(len(data_list))
 
@@ -301,59 +470,130 @@ class CharacterPage(QWidget):
                 reward_text += f" (+{len(rewards) - 3})"
             self.table.setItem(row, 5, QTableWidgetItem(reward_text))
 
-            pixmap = self.load_dds(data["image_path"])
-            label = BodyLabel("無法加載圖像") if pixmap is None else BodyLabel()
-            if pixmap:
-                label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            self.table.setCellWidget(row, 0, label)
-
+            img_label = BodyLabel("載入中...")
+            self.table.setCellWidget(row, 0, img_label)
             self.table.setRowHeight(row, 128)
             self.table.setColumnWidth(0, 128)
+
+            self.load_image_async(row, data["image_path"])
 
             copy_btn = PushButton("提取")
             copy_btn.clicked.connect(lambda _, d=data: self.extract_image(d))
             self.table.setCellWidget(row, 6, copy_btn)
 
-    def load_dds(self, dds_path):
-        if not dds_path or not os.path.exists(dds_path):
-            QMessageBox.warning(self, "DDS圖像路徑不存在", dds_path)
-            return None
+    def load_image_async(self, row, dds_path):
+        loader = ImageLoaderThread(row, dds_path)
+        loader.image_loaded.connect(self.on_image_loaded)
+        loader.finished.connect(lambda: self.cleanup_image_loader(row))
+        self.image_loaders[row] = loader
 
-        try:
-            img = Image.open(dds_path).convert("RGBA")
-            data = img.tobytes("raw", "RGBA")
-            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
-            return QPixmap.fromImage(qimg)
-        except Exception as e:
-            QMessageBox.critical(self, "讀取DDS圖像失敗", f"路徑: {dds_path}, 錯誤: {e}")
+        QTimer.singleShot(row * 50, loader.start)
 
-            base, ext = os.path.splitext(dds_path)
-            alt_path = base + (".DDS" if ext.lower() == ".dds" else ".dds")
-            if os.path.exists(alt_path):
-                try:
-                    img = Image.open(alt_path).convert("RGBA")
-                    data = img.tobytes("raw", "RGBA")
-                    qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
-                    return QPixmap.fromImage(qimg)
-                except Exception as e2:
-                    QMessageBox.critical(self, "備用DDS圖像讀取失敗", f"路徑: {alt_path}, 錯誤: {e2}")
+    def on_image_loaded(self, row, pixmap):
+        if row < self.table.rowCount():
+            label = BodyLabel()
+            label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.table.setCellWidget(row, 0, label)
 
-        return None
+    def cleanup_image_loader(self, row):
+        if row in self.image_loaders:
+            del self.image_loaders[row]
 
     def extract_image(self, data):
         target_dir = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
         if not target_dir:
-            QMessageBox.warning(self, "錯誤", "未選擇任何資料夾")
             return
 
-        img_path = data["image_path"]
-        if not os.path.exists(img_path):
-            QMessageBox.warning(self, "角色圖像檔案不存在", f"{img_path}")
+        if self.current_file_operation and self.current_file_operation.isRunning():
+            QMessageBox.information(self, "提示", "請等待當前操作完成")
             return
 
-        try:
-            target = os.path.join(target_dir, os.path.basename(img_path))
-            shutil.copy(img_path, target)
-            QMessageBox.information(self, "成功", f"成功將角色圖像複製到: {target}")
-        except Exception as e:
-            QMessageBox.critical(self, "複製角色圖像失敗", e)
+        self.current_file_operation = FileOperationThread(
+            "extract_image",
+            img_path=data["image_path"],
+            target_dir=target_dir
+        )
+        self.current_file_operation.operation_completed.connect(self.on_file_operation_completed)
+        self.current_file_operation.start()
+
+    def rebuild_index(self):
+        if self.search_thread.isRunning():
+            QMessageBox.information(self, "提示", "正在搜索中，請稍候")
+            return
+
+        if self.current_file_operation and self.current_file_operation.isRunning():
+            QMessageBox.information(self, "提示", "請等待當前操作完成")
+            return
+
+        index_path = self.search_thread.get_index_path()
+        self.current_file_operation = FileOperationThread(
+            "rebuild_index",
+            index_path=index_path
+        )
+        self.current_file_operation.operation_completed.connect(self.on_rebuild_completed)
+        self.current_file_operation.start()
+
+    def on_rebuild_completed(self, success, message):
+        if success:
+            self.progress.setValue(0)
+            self.progress.show()
+            self.searchMsg.setText("正在重新建立索引...")
+            self.searchMsg.show()
+            self.index_status.setText("索引狀態：重新建立中...")
+            self.has_searched = False  # 重置搜索状态
+            QTimer.singleShot(100, self.start_search)
+        else:
+            QMessageBox.critical(self, "刪除索引失敗", message)
+
+    def reload_index(self):
+        if self.search_thread.isRunning():
+            QMessageBox.information(self, "提示", "正在搜索中，請稍候")
+            return
+
+        if self.current_file_operation and self.current_file_operation.isRunning():
+            QMessageBox.information(self, "提示", "請等待當前操作完成")
+            return
+
+        index_path = self.search_thread.get_index_path()
+        self.current_file_operation = FileOperationThread(
+            "reload_index",
+            index_path=index_path
+        )
+        self.current_file_operation.operation_completed.connect(self.on_reload_completed)
+        self.current_file_operation.start()
+
+    def on_reload_completed(self, success, message):
+        if success:
+            if message.startswith("reload_success"):
+                parts = message.split("|")
+                chara_data_str = parts[1]
+                timestamp = parts[2]
+
+                chara_data = json.loads(chara_data_str)
+                self.chara_data = chara_data
+                self.update_table(list(chara_data.values()))
+                self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+                QMessageBox.information(self, "完成", "已成功重新載入索引。")
+        else:
+            QMessageBox.critical(self, "載入失敗", message)
+
+    def on_file_operation_completed(self, success, message):
+        if success:
+            QMessageBox.information(self, "成功", message)
+        else:
+            QMessageBox.critical(self, "操作失敗", message)
+
+    def closeEvent(self, event):
+        if self.search_thread.isRunning():
+            self.search_thread.terminate()
+            self.search_thread.wait()
+
+        for loader in self.image_loaders.values():
+            if loader.isRunning():
+                loader.terminate()
+
+        if self.current_file_operation and self.current_file_operation.isRunning():
+            self.current_file_operation.terminate()
+            self.current_file_operation.wait()
+
+        event.accept()

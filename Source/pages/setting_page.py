@@ -39,6 +39,8 @@ class SettingPage(QWidget):
         layout.addWidget(title)
         layout.addSpacing(10)
 
+        layout.addWidget(StrongBodyLabel(self.tr("所有選項即時儲存, 重啟後生效")))
+
         layout.addWidget(StrongBodyLabel(self.tr("檢查更新：")))
         check_btn = PrimaryPushButton(self.tr(f"檢查更新 (當前版本： {CURRENT_VERSION})"))
         check_btn.clicked.connect(self.check_update)

@@ -608,114 +608,117 @@
     </message>
     <message>
         <location filename="pages/setting_page.py" line="42"/>
+        <source>所有選項即時儲存, 重啟後生效</source>
+        <translation>所有选项即时储存, 重启后生效</translation>
+    </message>
+    <message>
+        <location filename="pages/setting_page.py" line="44"/>
         <source>檢查更新：</source>
         <translation>检查更新：</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="43"/>
+        <location filename="pages/setting_page.py" line="45"/>
         <source>檢查更新 (當前版本： {CURRENT_VERSION})</source>
         <translation>检查更新 (当前版本： {CURRENT_VERSION})</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="49"/>
+        <location filename="pages/setting_page.py" line="51"/>
         <source>選擇主題：</source>
         <translation>选择主题：</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="57"/>
+        <location filename="pages/setting_page.py" line="59"/>
         <source>選擇翻譯檔 (.qm)：</source>
         <translation>选择翻译档 (.qm)：</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="63"/>
-        <location filename="pages/setting_page.py" line="80"/>
+        <location filename="pages/setting_page.py" line="65"/>
+        <location filename="pages/setting_page.py" line="82"/>
         <source>選擇檔案</source>
         <translation>选择档案</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="66"/>
+        <location filename="pages/setting_page.py" line="68"/>
         <source>重置翻譯</source>
         <translation>重置翻译</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="74"/>
+        <location filename="pages/setting_page.py" line="76"/>
         <source>選擇 segatools.ini 路徑：</source>
         <translation>选择 segatools.ini 路径：</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="93"/>
+        <location filename="pages/setting_page.py" line="95"/>
         <source>（無更新日誌）</source>
         <translation>（无更新日志）</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="97"/>
+        <location filename="pages/setting_page.py" line="99"/>
         <source>發現新版本</source>
         <translation>发现新版本</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="99"/>
+        <location filename="pages/setting_page.py" line="101"/>
         <source>發現新版本 {latest}，是否前往下載？</source>
         <translation>发现新版本 {latest}，是否前往下载？</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="108"/>
+        <location filename="pages/setting_page.py" line="110"/>
         <source>已是最新</source>
         <translation>已是最新</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="108"/>
+        <location filename="pages/setting_page.py" line="110"/>
         <source>目前已是最新版本 {CURRENT_VERSION}。</source>
         <translation>目前已是最新版本 {CURRENT_VERSION}。</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="110"/>
+        <location filename="pages/setting_page.py" line="112"/>
         <source>更新失敗</source>
         <translation>更新失败</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="110"/>
+        <location filename="pages/setting_page.py" line="112"/>
         <source>無法取得更新資訊。</source>
         <translation>无法取得更新资讯。</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="112"/>
+        <location filename="pages/setting_page.py" line="114"/>
         <source>錯誤</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="112"/>
+        <location filename="pages/setting_page.py" line="114"/>
         <source>檢查更新時發生錯誤：{str(e)}</source>
         <translation>检查更新时发生错误：{str(e)}</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="167"/>
+        <location filename="pages/setting_page.py" line="169"/>
         <source>選擇 segatools.ini</source>
         <translation>选择 segatools.ini</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="167"/>
+        <location filename="pages/setting_page.py" line="169"/>
         <source>SEGATOOLS配置檔 (segatools.ini)</source>
         <translation>SEGATOOLS配置档 (segatools.ini)</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="176"/>
+        <location filename="pages/setting_page.py" line="178"/>
         <source>選擇翻譯檔</source>
         <translation>选择翻译档</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="176"/>
+        <location filename="pages/setting_page.py" line="178"/>
         <source>QT翻譯檔案 (*.qm)</source>
         <translation>QT翻译档案 (*.qm)</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="184"/>
         <source>翻譯重置</source>
-        <translation>翻译重置</translation>
+        <translation type="vanished">翻译重置</translation>
     </message>
     <message>
-        <location filename="pages/setting_page.py" line="184"/>
         <source>已重置翻譯檔設定，下次啟動將恢復為預設語言。</source>
-        <translation>已重置翻译档设定，下次启动将恢复为预设语言。</translation>
+        <translation type="vanished">已重置翻译档设定，下次启动将恢复为预设语言。</translation>
     </message>
 </context>
 <context>

@@ -2,7 +2,6 @@
 
 CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 製作的管理工具，令使用者更方便地整理、維護與優化 CHUNITHM 遊戲內容。<br>
 接受功能請求, 請打開一個issues. 錯誤回報也一樣.<br>
-我就很好奇到底有多少人不愛看README, 別問我怎麼解密, 用你那聰明的大腦好好想想.
 
 ---
 
@@ -33,6 +32,12 @@ CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 製作的管理工具
 
 ## 授權條款
 本專案以 [MIT License](https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt) 授權。
+
+---
+
+## 贊助
+資助超過20元即可出現在感謝名單內, 名單每月更新<br>
+<img src="Source/img/wc_spon.JPG" width=300>
 
 ---
 

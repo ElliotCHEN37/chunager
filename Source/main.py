@@ -91,16 +91,16 @@ class MainWindow(FluentWindow):
 
     def setup_pages(self):
         self.pages = {
-            "首頁": (HomePage(), self.get_icon("home"), NavigationItemPosition.TOP),
-            "OPT": (OptPage(), self.get_icon("opt"), NavigationItemPosition.TOP),
-            "樂曲": (MusicPage(), self.get_icon("music"), NavigationItemPosition.TOP),
-            "角色": (CharacterPage(), self.get_icon("character"), NavigationItemPosition.TOP),
-            "解鎖": (UnlockerPage(), self.get_icon("unlock"), NavigationItemPosition.TOP),
-            "補丁": (PatcherPage(), self.get_icon("pill"), NavigationItemPosition.TOP),
-            "下載": (HDDPage(), self.get_icon("download"), NavigationItemPosition.TOP),
-            "手冊": (PFMManualPage(), self.get_icon("manual"), NavigationItemPosition.TOP),
-            "設定": (SettingPage(), self.get_icon("setting"), NavigationItemPosition.BOTTOM),
-            "關於": (AboutPage(), self.get_icon("info"), NavigationItemPosition.BOTTOM)
+            self.tr("首頁"): (HomePage(), self.get_icon("home"), NavigationItemPosition.TOP),
+            self.tr("OPT"): (OptPage(), self.get_icon("opt"), NavigationItemPosition.TOP),
+            self.tr("樂曲"): (MusicPage(), self.get_icon("music"), NavigationItemPosition.TOP),
+            self.tr("角色"): (CharacterPage(), self.get_icon("character"), NavigationItemPosition.TOP),
+            self.tr("解鎖"): (UnlockerPage(), self.get_icon("unlock"), NavigationItemPosition.TOP),
+            self.tr("補丁"): (PatcherPage(), self.get_icon("pill"), NavigationItemPosition.TOP),
+            self.tr("下載"): (HDDPage(), self.get_icon("download"), NavigationItemPosition.TOP),
+            self.tr("手冊"): (PFMManualPage(), self.get_icon("manual"), NavigationItemPosition.TOP),
+            self.tr("設定"): (SettingPage(), self.get_icon("setting"), NavigationItemPosition.BOTTOM),
+            self.tr("關於"): (AboutPage(), self.get_icon("info"), NavigationItemPosition.BOTTOM)
         }
 
     def setup_nav(self):

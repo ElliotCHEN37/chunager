@@ -18,21 +18,21 @@ class UnlockerPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        titleLabel = LargeTitleLabel("解鎖工具")
+        titleLabel = LargeTitleLabel(self.tr("解鎖工具"))
         titleFont = QFont()
         titleFont.setPointSize(20)
         titleFont.setBold(True)
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignLeft)
 
-        unlockerButton = PrimaryPushButton(QIcon(get_path("img/launch.svg")), "啟動 Unlocker")
+        unlockerButton = PrimaryPushButton(QIcon(get_path("img/launch.svg")), self.tr("啟動 Unlocker"))
         unlockerButton.clicked.connect(self.launch_unlocker)
 
         notice = HeaderCardWidget()
 
-        notice.setTitle("警告")
+        notice.setTitle(self.tr("警告"))
         notice.ErrorIcon = IconWidget(QIcon(get_path("img/error.svg")))
-        notice.infoLabel = BodyLabel("Unlocker 並非由本人編寫，如有疑慮請勿使用")
+        notice.infoLabel = BodyLabel(self.tr("Unlocker 並非由本人編寫，如有疑慮請勿使用"))
 
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()
@@ -61,6 +61,6 @@ class UnlockerPage(QWidget):
             try:
                 subprocess.Popen(unlocker_path, shell=True)
             except Exception as e:
-                QMessageBox.critical(self, "錯誤", f"啟動 Unlocker 時發生錯誤：\n{str(e)}")
+                QMessageBox.critical(self, self.tr("錯誤"), self.tr(f"啟動 Unlocker 時發生錯誤：\n{str(e)}"))
         else:
-            QMessageBox.warning(self, "找不到檔案", "找不到 unlocker.exe，請確認路徑是否正確。")
+            QMessageBox.warning(self, self.tr("找不到檔案"), self.tr("找不到 unlocker.exe，請確認路徑是否正確。"))

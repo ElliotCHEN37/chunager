@@ -22,24 +22,20 @@ class HomePage(QWidget):
         logoLabel.setPixmap(pixmap)
         logoLabel.setAlignment(Qt.AlignCenter)
 
-        titleLabel = LargeTitleLabel("歡迎使用 CHUNAGER")
+        titleLabel = LargeTitleLabel(self.tr("歡迎使用 CHUNAGER"))
         titleFont = QFont()
         titleFont.setPointSize(24)
         titleFont.setBold(True)
         titleLabel.setFont(titleFont)
         titleLabel.setAlignment(Qt.AlignCenter)
 
-        descriptionLabel = StrongBodyLabel(
-            "CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE)設計的管理工具\n"
-            "提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n"
-            "協助您更輕鬆地整理與優化遊戲內容"
-        )
+        descriptionLabel = StrongBodyLabel(self.tr("CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE)設計的管理工具\n提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n協助您更輕鬆地整理與優化遊戲內容"))
         descFont = QFont()
         descFont.setPointSize(14)
         descriptionLabel.setFont(descFont)
         descriptionLabel.setAlignment(Qt.AlignCenter)
 
-        authorLabel = CaptionLabel("作者：Elliot")
+        authorLabel = CaptionLabel(self.tr("作者：Elliot"))
         authorFont = QFont()
         authorFont.setPointSize(12)
         authorFont.setItalic(True)

@@ -38,18 +38,14 @@ class AboutPage(QWidget):
 
         layout.addWidget(styled_label(
             StrongBodyLabel,
-            "CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 設計的管理工具\n"
-            "提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n"
-            "協助您更輕鬆地整理與優化遊戲內容",
+            self.tr("CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 設計的管理工具\n提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n協助您更輕鬆地整理與優化遊戲內容"),
             12
         ))
         layout.addSpacing(15)
 
         layout.addWidget(styled_label(
             CaptionLabel,
-            "作者：Elliot<br>"
-            f"版本：{self.current_version}<br>"
-            'GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>',
+            self.tr(f'作者：Elliot<br>版本：{self.current_version}<br>GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>'),
             10,
             rich=True
         ))
@@ -57,11 +53,7 @@ class AboutPage(QWidget):
 
         layout.addWidget(styled_label(
             CaptionLabel,
-            "<br>免責聲明：<br>"
-            "本程式為個人開發，與任何和 Evil Leaker、SEGA、CHUNITHM 官方團隊或相關人物及事項無任何關係。<br>"
-            "請遵守當地法律使用。<br>"
-            '本程式使用 MIT 授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。<br>'
-            "使用本程式所造成的一切後果，作者不承擔任何責任。",
+            self.tr('<br>免責聲明：<br>本程式為個人開發，與任何和 Evil Leaker、SEGA、CHUNITHM 官方團隊或相關人物及事項無任何關係。<br>請遵守當地法律使用。<br>本程式使用 MIT 授權，詳見<a href="https://raw.githubusercontent.com/ElliotCHEN37/chunager/refs/heads/main/LICENSE.txt">許可證</a>。<br>使用本程式所造成的一切後果，作者不承擔任何責任。'),
             10,
             rich=True
         ))

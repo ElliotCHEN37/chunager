@@ -27,7 +27,7 @@ class OptLoader(QObject):
 
             st_path = cfg.get("GENERAL", "segatools_path", fallback=None)
             if not st_path or not os.path.exists(st_path):
-                self.fail.emit("找不到 segatools.ini")
+                self.fail.emit("segatools.ini not found")
                 return
 
             st_cfg = configparser.ConfigParser()
@@ -35,12 +35,12 @@ class OptLoader(QObject):
 
             opt_path = st_cfg.get("vfs", "option", fallback=None)
             if not opt_path:
-                self.fail.emit("找不到 [vfs] option")
+                self.fail.emit("[vfs] option not found")
                 return
 
             opt_dir = opt_path if os.path.isabs(opt_path) else os.path.join(os.path.dirname(st_path), opt_path)
             if not os.path.exists(opt_dir):
-                self.fail.emit("找不到 option 目錄")
+                self.fail.emit("option path not found")
                 return
 
             folders = []
@@ -69,7 +69,7 @@ class OptPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        title = LargeTitleLabel("OPT管理")
+        title = LargeTitleLabel(self.tr("OPT管理"))
         font = QFont()
         font.setPointSize(20)
         font.setBold(True)
@@ -77,7 +77,7 @@ class OptPage(QWidget):
 
         self.table = TableWidget(self)
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["資料夾", "類型", "版本", "操作"])
+        self.table.setHorizontalHeaderLabels([self.tr("資料夾"), self.tr("類型"), self.tr("版本"), self.tr("操作")])
         self.table.horizontalHeader().setStretchLastSection(True)
 
         layout.addWidget(title)
@@ -105,11 +105,11 @@ class OptPage(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(name))
             if os.path.exists(conf_path):
-                self.table.setItem(row, 1, QTableWidgetItem("官方更新"))
+                self.table.setItem(row, 1, QTableWidgetItem(self.tr("官方更新")))
                 ver = self.get_version(conf_path)
                 self.table.setItem(row, 2, QTableWidgetItem(ver))
             else:
-                self.table.setItem(row, 1, QTableWidgetItem("自製更新"))
+                self.table.setItem(row, 1, QTableWidgetItem(self.tr("自製更新")))
                 self.table.setItem(row, 2, QTableWidgetItem("\\"))
 
             del_btn = PushButton("刪除", self)
@@ -117,13 +117,13 @@ class OptPage(QWidget):
             self.table.setCellWidget(row, 3, del_btn)
 
     def show_error(self, msg):
-        QMessageBox.critical(self, "載入錯誤", msg)
+        QMessageBox.critical(self, self.tr("載入錯誤"), msg)
 
     def ask_delete(self, path, name):
         reply = QMessageBox.warning(
             self,
-            "確認刪除",
-            f"你確定要刪除資料夾「{name}」嗎？此操作無法復原！",
+            self.tr("確認刪除"),
+            self.tr(f"你確定要刪除資料夾「{name}」嗎？此操作無法復原！"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -134,10 +134,10 @@ class OptPage(QWidget):
         if os.path.exists(path) and os.path.isdir(path):
             try:
                 shutil.rmtree(path)
-                QMessageBox.information(self, "已刪除資料夾", path)
+                QMessageBox.information(self, self.tr("已刪除資料夾"), path)
                 self.load_data()
             except Exception as e:
-                QMessageBox.critical(self, "刪除失敗", e)
+                QMessageBox.critical(self, self.tr("刪除失敗"), e)
 
     def get_version(self, conf_path):
         ver_cfg = configparser.ConfigParser()
@@ -150,5 +150,5 @@ class OptPage(QWidget):
             release = ver_cfg.getint("Version", "VerRelease", fallback=0)
             return f"{major}.{minor}.{release}"
         except Exception as e:
-            QMessageBox.critical(self, "讀取版本失敗", e)
-            return "未知"
+            QMessageBox.critical(self, self.tr("讀取版本失敗"), e)
+            return self.tr("未知")

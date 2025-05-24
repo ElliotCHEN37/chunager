@@ -62,22 +62,22 @@ class FileOperationThread(QThread):
         img_path = self.kwargs['img_path']
         target_dir = self.kwargs['target_dir']
         if not os.path.exists(img_path):
-            self.operation_completed.emit(False, f"封面圖像不存在: {img_path}")
+            self.operation_completed.emit(False, f"jaket not exist: {img_path}")
             return
         target = os.path.join(target_dir, os.path.basename(img_path))
         shutil.copy(img_path, target)
-        self.operation_completed.emit(True, f"封面已複製到: {target}")
+        self.operation_completed.emit(True, f"copied: {target}")
 
     def _rebuild_index(self):
         index_path = self.kwargs['index_path']
         if os.path.exists(index_path):
             os.remove(index_path)
-        self.operation_completed.emit(True, "索引檔案已刪除，準備重建")
+        self.operation_completed.emit(True, "index deleted, rebuilding")
 
     def _reload_index(self):
         index_path = self.kwargs['index_path']
         if not os.path.exists(index_path):
-            self.operation_completed.emit(False, "尚未建立索引，請先使用「重建索引」。")
+            self.operation_completed.emit(False, "index not exist, rebuild first")
             return
         with open(index_path, 'r', encoding='utf-8') as f:
             index_data = json.load(f)
@@ -94,7 +94,7 @@ class MusicSearchThread(QThread):
 
     def run(self):
         try:
-            self.status_update.emit("正在檢查索引...")
+            self.status_update.emit("checking index")
             index_path = self.get_index_path()
             need_rescan = True
             music_data = {}
@@ -107,17 +107,17 @@ class MusicSearchThread(QThread):
                     current_opt_mtime = self.get_opt_last_modified_time()
                     if current_opt_mtime == last_opt_mtime:
                         need_rescan = False
-                        self.status_update.emit("使用現有索引...")
+                        self.status_update.emit("using existing index")
                 except Exception as e:
-                    self.error.emit("讀取索引檔案錯誤", str(e))
+                    self.error.emit("error when reading index", str(e))
                     return
             if need_rescan:
-                self.status_update.emit("正在掃描XML檔案...")
+                self.status_update.emit("scanning XML files")
                 xml_paths = self.find_xmls()
                 music_data = {}
                 total = len(xml_paths)
                 if total == 0:
-                    self.status_update.emit("未找到任何樂曲檔案")
+                    self.status_update.emit("XML not fouond")
                     self.found.emit({})
                     return
                 for idx, xml_path in enumerate(xml_paths):
@@ -126,11 +126,11 @@ class MusicSearchThread(QThread):
                         music_data[data["music_id"]] = data
                         progress_val = int(((idx + 1) / total) * 100)
                         self.progress.emit(progress_val)
-                        self.status_update.emit(f"正在處理: {data['music_name']} ({idx + 1}/{total})")
+                        self.status_update.emit(f"processing: {data['music_name']} ({idx + 1}/{total})")
                     except Exception as e:
-                        print(f"解析XML失敗: {xml_path}, 錯誤: {e}")
+                        print(f"parsing xml failed: {xml_path}, error: {e}")
                         continue
-                self.status_update.emit("正在保存索引...")
+                self.status_update.emit("saving index")
                 current_opt_mtime = self.get_opt_last_modified_time()
                 try:
                     with open(index_path, 'w', encoding='utf-8') as f:
@@ -139,12 +139,12 @@ class MusicSearchThread(QThread):
                             "music_data": music_data
                         }, f, ensure_ascii=False, indent=2)
                 except Exception as e:
-                    self.error.emit("寫入索引檔案錯誤", str(e))
+                    self.error.emit("writing xml failed", str(e))
                     return
-            self.status_update.emit("完成!")
+            self.status_update.emit("done")
             self.found.emit(music_data)
         except Exception as e:
-            self.error.emit("搜索過程中發生錯誤", str(e))
+            self.error.emit("search failed", str(e))
 
     def get_cfg_path(self):
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
@@ -222,7 +222,7 @@ class MusicSearchThread(QThread):
                     found.append(xml_path)
         return found
 
-    def xml_text(self, root, path, default="未知"):
+    def xml_text(self, root, path, default="unknown"):
         elem = root.find(path)
         return elem.text if elem is not None else default
 
@@ -276,41 +276,39 @@ class MusicPage(QWidget):
     def init_ui(self):
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignTop)
-        self.titleLabel = LargeTitleLabel("樂曲管理")
+        self.titleLabel = LargeTitleLabel(self.tr("樂曲管理"))
         self.layout.addWidget(self.titleLabel)
-        self.searchMsg = BodyLabel("正在搜尋資料...")
+        self.searchMsg = BodyLabel(self.tr("正在搜尋資料..."))
         self.searchMsg.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.searchMsg)
         self.progress = ProgressBar(self)
         self.progress.setRange(0, 100)
         self.layout.addWidget(self.progress)
-        self.index_status = BodyLabel("索引狀態：尚未建立")
+        self.index_status = BodyLabel(self.tr("索引狀態：尚未建立"))
         self.index_status.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.index_status)
         search_layout = QHBoxLayout()
         self.searchBox = LineEdit(self)
-        self.searchBox.setPlaceholderText("搜尋音樂名稱...")
+        self.searchBox.setPlaceholderText(self.tr("搜尋音樂名稱..."))
         search_layout.addWidget(self.searchBox)
-        self.searchBtn = PrimaryPushButton("搜尋")
+        self.searchBtn = PrimaryPushButton(self.tr("搜尋"))
         self.searchBtn.clicked.connect(self.filter_data)
         search_layout.addWidget(self.searchBtn)
-        self.resetBtn = PushButton("重置")
+        self.resetBtn = PushButton(self.tr("重置"))
         self.resetBtn.clicked.connect(self.reset_filter)
         search_layout.addWidget(self.resetBtn)
         self.layout.addLayout(search_layout)
         btn_layout = QHBoxLayout()
-        self.rebuild_btn = PrimaryPushButton("重建索引")
+        self.rebuild_btn = PrimaryPushButton(self.tr("重建索引"))
         self.rebuild_btn.clicked.connect(self.rebuild_index)
         btn_layout.addWidget(self.rebuild_btn)
-        self.reload_btn = PrimaryPushButton("重新載入")
+        self.reload_btn = PrimaryPushButton(self.tr("重新載入"))
         self.reload_btn.clicked.connect(self.reload_index)
         btn_layout.addWidget(self.reload_btn)
         self.layout.addLayout(btn_layout)
         self.table = TableWidget(self)
         self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels([
-            "封面", "音樂ID", "音樂名稱", "藝術家", "類型", "日期", "難度", "提取封面"
-        ])
+        self.table.setHorizontalHeaderLabels([self.tr("封面"), self.tr("音樂ID"), self.tr("名稱"), self.tr("曲師"), self.tr("分類"), self.tr("日期"), self.tr("可用難度"), self.tr("提取封面")])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSortingEnabled(True)
         self.layout.addWidget(self.table)
@@ -355,9 +353,9 @@ class MusicPage(QWidget):
             mtime = os.path.getmtime(index_path)
             from datetime import datetime
             timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
-            self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+            self.index_status.setText(self.tr(f"索引狀態：最後更新於 {timestamp}"))
         else:
-            self.index_status.setText("索引狀態：尚未建立")
+            self.index_status.setText(self.tr("索引狀態：尚未建立"))
 
     def reset_filter(self):
         self.searchBox.clear()
@@ -393,13 +391,13 @@ class MusicPage(QWidget):
             self.table.setItem(row, 5, QTableWidgetItem(data["release_date"]))
             diff_text = ", ".join([f"{d['type']}: {d['level']}" for d in data["fumens"]])
             self.table.setItem(row, 6, QTableWidgetItem(diff_text))
-            img_label = BodyLabel("載入中...")
+            img_label = BodyLabel(self.tr("載入中..."))
             img_label.setAlignment(Qt.AlignCenter)
             self.table.setCellWidget(row, 0, img_label)
             self.table.setRowHeight(row, 128)
             self.table.setColumnWidth(0, 128)
             self.load_image_async(row, data["jacket_path"])
-            copy_btn = PushButton("提取")
+            copy_btn = PushButton(self.tr("提取"))
             copy_btn.clicked.connect(lambda _, d=data: self.extract_image(d))
             self.table.setCellWidget(row, 7, copy_btn)
 
@@ -422,11 +420,11 @@ class MusicPage(QWidget):
             del self.image_loaders[row]
 
     def extract_image(self, data):
-        target_dir = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
+        target_dir = QFileDialog.getExistingDirectory(self, self.tr("選擇目標資料夾"), "")
         if not target_dir:
             return
         if self.current_file_operation and self.current_file_operation.isRunning():
-            QMessageBox.information(self, "提示", "請等待當前操作完成")
+            QMessageBox.information(self, self.tr("提示"), self.tr("請等待當前操作完成"))
             return
         self.current_file_operation = FileOperationThread(
             "extract_image",
@@ -438,10 +436,10 @@ class MusicPage(QWidget):
 
     def rebuild_index(self):
         if self.search_thread.isRunning():
-            QMessageBox.information(self, "提示", "正在搜索中，請稍候")
+            QMessageBox.information(self, self.tr("提示"), self.tr("正在搜索中，請稍候"))
             return
         if self.current_file_operation and self.current_file_operation.isRunning():
-            QMessageBox.information(self, "提示", "請等待當前操作完成")
+            QMessageBox.information(self, self.tr("提示"), self.tr("請等待當前操作完成"))
             return
         index_path = self.search_thread.get_index_path()
         self.current_file_operation = FileOperationThread(
@@ -455,20 +453,20 @@ class MusicPage(QWidget):
         if success:
             self.progress.setValue(0)
             self.progress.show()
-            self.searchMsg.setText("正在重新建立索引...")
+            self.searchMsg.setText(self.tr("正在重新建立索引..."))
             self.searchMsg.show()
-            self.index_status.setText("索引狀態：重新建立中...")
-            self.has_searched = False  # 重置搜索状态
+            self.index_status.setText(self.tr("索引狀態：重新建立中..."))
+            self.has_searched = False
             QTimer.singleShot(100, self.start_search)
         else:
-            QMessageBox.critical(self, "刪除索引失敗", message)
+            QMessageBox.critical(self, self.tr("刪除索引失敗"), message)
 
     def reload_index(self):
         if self.search_thread.isRunning():
-            QMessageBox.information(self, "提示", "正在搜索中，請稍候")
+            QMessageBox.information(self, self.tr("提示"), self.tr("正在搜索中，請稍候"))
             return
         if self.current_file_operation and self.current_file_operation.isRunning():
-            QMessageBox.information(self, "提示", "請等待當前操作完成")
+            QMessageBox.information(self, self.tr("提示"), self.tr("請等待當前操作完成"))
             return
         index_path = self.search_thread.get_index_path()
         self.current_file_operation = FileOperationThread(
@@ -487,16 +485,16 @@ class MusicPage(QWidget):
                 music_data = json.loads(music_data_str)
                 self.music_data = music_data
                 self.update_table(list(music_data.values()))
-                self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
-                QMessageBox.information(self, "完成", "已成功重新載入索引。")
+                self.index_status.setText(self.tr(f"索引狀態：最後更新於 {timestamp}"))
+                QMessageBox.information(self, self.tr("完成"), self.tr("已成功重新載入索引。"))
         else:
-            QMessageBox.critical(self, "載入失敗", message)
+            QMessageBox.critical(self, self.tr("載入失敗"), message)
 
     def on_file_operation_completed(self, success, message):
         if success:
-            QMessageBox.information(self, "成功", message)
+            QMessageBox.information(self, self.tr("成功"), message)
         else:
-            QMessageBox.critical(self, "操作失敗", message)
+            QMessageBox.critical(self, self.tr("操作失敗"), message)
 
     def closeEvent(self, event):
         if self.search_thread.isRunning():

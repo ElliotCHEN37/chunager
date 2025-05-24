@@ -10,7 +10,7 @@ from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, LineEdit, Prim
 
 GITHUB_REPO_API = "https://api.github.com/repos/ElliotCHEN37/chunager/releases/latest"
 GITHUB_RELEASE_URL = "https://github.com/ElliotCHEN37/chunager/releases"
-CURRENT_VERSION = "v1.2"
+CURRENT_VERSION = "v1.2.1"
 
 
 def get_path(rel_path: str) -> str:
@@ -71,12 +71,20 @@ class SettingPage(QWidget):
         try:
             response = requests.get(GITHUB_REPO_API, timeout=5)
             if response.status_code == 200:
-                latest = response.json().get("tag_name", CURRENT_VERSION)
+                data = response.json()
+                latest = data.get("tag_name", CURRENT_VERSION)
+                release_notes = data.get("body", "（無更新日誌）")
+
                 if latest > CURRENT_VERSION:
-                    reply = QMessageBox.question(
-                        self, "發現新版本", f"發現新版本 {latest}，是否前往下載？",
-                        QMessageBox.Yes | QMessageBox.No
-                    )
+                    msg = QMessageBox(self)
+                    msg.setWindowTitle("發現新版本")
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setText(f"發現新版本 {latest}，是否前往下載？")
+                    msg.setInformativeText(release_notes)
+                    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                    msg.setDefaultButton(QMessageBox.Yes)
+                    reply = msg.exec()
+
                     if reply == QMessageBox.Yes:
                         webbrowser.open(GITHUB_RELEASE_URL)
                 else:

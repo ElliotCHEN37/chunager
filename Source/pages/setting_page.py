@@ -31,7 +31,7 @@ class SettingPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
-        title = TitleLabel("設定")
+        title = TitleLabel(self.tr("設定"))
         font = QFont()
         font.setPointSize(20)
         font.setBold(True)
@@ -39,14 +39,14 @@ class SettingPage(QWidget):
         layout.addWidget(title)
         layout.addSpacing(10)
 
-        layout.addWidget(StrongBodyLabel("檢查更新："))
-        check_btn = PrimaryPushButton("檢查更新 (當前版本：" + CURRENT_VERSION + ")")
+        layout.addWidget(StrongBodyLabel(self.tr("檢查更新：")))
+        check_btn = PrimaryPushButton(self.tr(f"檢查更新 (當前版本： {CURRENT_VERSION})"))
         check_btn.clicked.connect(self.check_update)
         layout.addWidget(check_btn)
 
         layout.addSpacing(10)
 
-        layout.addWidget(StrongBodyLabel("選擇主題："))
+        layout.addWidget(StrongBodyLabel(self.tr("選擇主題：")))
         self.theme_box = ComboBox(self)
         self.theme_box.addItems(["AUTO", "DARK", "LIGHT"])
         self.theme_box.setCurrentText(self.cfg.get("DISPLAY", "theme", fallback="AUTO"))
@@ -54,13 +54,30 @@ class SettingPage(QWidget):
         layout.addWidget(self.theme_box)
         layout.addSpacing(10)
 
-        layout.addWidget(StrongBodyLabel("選擇 segatools.ini 路徑："))
+        layout.addWidget(StrongBodyLabel(self.tr("選擇翻譯檔 (.qm)：")))
+        qm_layout = QHBoxLayout()
+        self.qm_path = LineEdit(self)
+        self.qm_path.setText(self.cfg.get("DISPLAY", "translation_path", fallback=""))
+        self.qm_path.textChanged.connect(self.update_qm_path)
+
+        qm_btn = PrimaryPushButton(QIcon(get_path("img/folder.svg")), self.tr("選擇檔案"))
+        qm_btn.clicked.connect(self.pick_qm_path)
+
+        reset_qm_btn = PrimaryPushButton(self.tr("重置翻譯"))
+        reset_qm_btn.clicked.connect(self.reset_qm_path)
+
+        qm_layout.addWidget(self.qm_path)
+        qm_layout.addWidget(qm_btn)
+        qm_layout.addWidget(reset_qm_btn)
+        layout.addLayout(qm_layout)
+
+        layout.addWidget(StrongBodyLabel(self.tr("選擇 segatools.ini 路徑：")))
         st_layout = QHBoxLayout()
         self.st_path = LineEdit(self)
         self.st_path.setText(self.cfg.get("GENERAL", "segatools_path", fallback=""))
         self.st_path.textChanged.connect(self.update_segatools_path)
 
-        st_btn = PrimaryPushButton(QIcon(get_path("img/folder.svg")), "選擇檔案")
+        st_btn = PrimaryPushButton(QIcon(get_path("img/folder.svg")), self.tr("選擇檔案"))
         st_btn.clicked.connect(self.pick_st_path)
 
         st_layout.addWidget(self.st_path)
@@ -73,13 +90,13 @@ class SettingPage(QWidget):
             if response.status_code == 200:
                 data = response.json()
                 latest = data.get("tag_name", CURRENT_VERSION)
-                release_notes = data.get("body", "（無更新日誌）")
+                release_notes = data.get("body", self.tr("（無更新日誌）"))
 
                 if latest > CURRENT_VERSION:
                     msg = QMessageBox(self)
-                    msg.setWindowTitle("發現新版本")
+                    msg.setWindowTitle(self.tr("發現新版本"))
                     msg.setIcon(QMessageBox.Information)
-                    msg.setText(f"發現新版本 {latest}，是否前往下載？")
+                    msg.setText(self.tr(f"發現新版本 {latest}，是否前往下載？"))
                     msg.setInformativeText(release_notes)
                     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                     msg.setDefaultButton(QMessageBox.Yes)
@@ -88,11 +105,11 @@ class SettingPage(QWidget):
                     if reply == QMessageBox.Yes:
                         webbrowser.open(GITHUB_RELEASE_URL)
                 else:
-                    QMessageBox.information(self, "已是最新", f"目前已是最新版本 {CURRENT_VERSION}。")
+                    QMessageBox.information(self, self.tr("已是最新"), self.tr(f"目前已是最新版本 {CURRENT_VERSION}。"))
             else:
-                QMessageBox.warning(self, "更新失敗", "無法取得更新資訊。")
+                QMessageBox.warning(self, self.tr("更新失敗"), self.tr("無法取得更新資訊。"))
         except Exception as e:
-            QMessageBox.critical(self, "錯誤", f"檢查更新時發生錯誤：{str(e)}")
+            QMessageBox.critical(self, self.tr("錯誤"), self.tr(f"檢查更新時發生錯誤：{str(e)}"))
 
     def get_cfg_path(self):
         app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
@@ -109,6 +126,7 @@ class SettingPage(QWidget):
         if not self.cfg.has_section("DISPLAY"):
             self.cfg.add_section("DISPLAY")
             self.cfg.set("DISPLAY", "theme", "AUTO")
+            self.cfg.set("DISPLAY", "translation_path", "")
             modified = True
 
         if not self.cfg.has_section("GENERAL"):
@@ -124,6 +142,10 @@ class SettingPage(QWidget):
 
             if not self.cfg.has_option("GENERAL", "segatools_path"):
                 self.cfg.set("GENERAL", "segatools_path", "")
+                modified = True
+
+            if not self.cfg.has_option("DISPLAY", "translation_path"):
+                self.cfg.set("DISPLAY", "translation_path", "")
                 modified = True
 
         if modified:
@@ -142,6 +164,21 @@ class SettingPage(QWidget):
         self.save_cfg()
 
     def pick_st_path(self):
-        path, _ = QFileDialog.getOpenFileName(self, "選擇 segatools.ini", "", "SEGATOOLS配置檔 (segatools.ini)")
+        path, _ = QFileDialog.getOpenFileName(self, self.tr("選擇 segatools.ini"), "", self.tr("SEGATOOLS配置檔 (segatools.ini)"))
         if path:
             self.st_path.setText(path)
+
+    def update_qm_path(self, text):
+        self.cfg.set("DISPLAY", "translation_path", text)
+        self.save_cfg()
+
+    def pick_qm_path(self):
+        path, _ = QFileDialog.getOpenFileName(self, self.tr("選擇翻譯檔"), "", self.tr("QT翻譯檔案 (*.qm)"))
+        if path:
+            self.qm_path.setText(path)
+
+    def reset_qm_path(self):
+        self.qm_path.clear()
+        self.cfg.set("DISPLAY", "translation_path", "")
+        self.save_cfg()
+        QMessageBox.information(self, self.tr("翻譯重置"), self.tr("已重置翻譯檔設定，下次啟動將恢復為預設語言。"))

@@ -5,7 +5,7 @@ import winreg
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtWidgets import QApplication
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtCore import QByteArray, Qt, QTranslator
 from qfluentwidgets import FluentWindow, setTheme, Theme, NavigationItemPosition
 from pages.home_page import HomePage
 from pages.opt_page import OptPage
@@ -111,6 +111,22 @@ class MainWindow(FluentWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    translator = QTranslator()
+    config = configparser.ConfigParser()
+    app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(os.path.dirname(__file__))
+    config_path = os.path.join(app_dir, "config.ini")
+    config.read(config_path, encoding="utf-8")
+
+    qm_path = config.get("DISPLAY", "translation_path", fallback="")
+    if os.path.isfile(qm_path):
+        if translator.load(qm_path):
+            app.installTranslator(translator)
+        else:
+            print(f"can not load translation：{qm_path}")
+    else:
+        print("translation not exist")
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

@@ -139,7 +139,7 @@ class MusicSearchThread(QThread):
                             "music_data": music_data
                         }, f, ensure_ascii=False, indent=2)
                 except Exception as e:
-                    self.error.emit(self.tr("寫入XML失敗"), str(e))
+                    self.error.emit(self.tr("寫入索引失敗"), str(e))
                     return
             self.status_update.emit(self.tr("已完成"))
             self.found.emit(music_data)

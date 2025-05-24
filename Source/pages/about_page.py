@@ -2,11 +2,15 @@ import configparser
 import os
 import sys
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+import requests
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QTableWidgetItem
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from qfluentwidgets import LargeTitleLabel, StrongBodyLabel, CaptionLabel
+from qfluentwidgets import LargeTitleLabel, StrongBodyLabel, CaptionLabel, TableWidget
 
+def get_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 class AboutPage(QWidget):
     def __init__(self):
@@ -17,8 +21,19 @@ class AboutPage(QWidget):
         self.cfg = self.load_cfg()
         self.current_version = self.cfg.get("GENERAL", "version")
 
-        layout = QVBoxLayout(self)
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+
+        inner = QWidget()
+        layout = QVBoxLayout(inner)
         layout.setAlignment(Qt.AlignTop)
+
+        layout.setAlignment(Qt.AlignTop)
+
+        scroll.setWidget(inner)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(scroll)
 
         def styled_label(label_class, text, point_size, rich=False):
             label = label_class(text)
@@ -36,11 +51,20 @@ class AboutPage(QWidget):
         layout.addWidget(styled_label(LargeTitleLabel, "關於 CHUNAGER", 20))
         layout.addSpacing(10)
 
-        layout.addWidget(styled_label(
-            StrongBodyLabel,
-            self.tr("CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 設計的管理工具\n提供歌曲管理、角色管理、OPT 管理、解鎖器、補丁管理等功能\n協助您更輕鬆地整理與優化遊戲內容"),
-            12
-        ))
+        layout.addWidget(styled_label(StrongBodyLabel, "感謝名單", 12))
+
+        self.table = TableWidget()
+        self.table.setColumnCount(2)
+        self.table.setRowCount(0)
+        self.table.setHorizontalHeaderLabels(["名稱", "贊助金額"])
+        self.table.setEditTriggers(TableWidget.NoEditTriggers)
+        self.table.setSelectionMode(TableWidget.NoSelection)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().setVisible(False)
+        layout.addWidget(self.table)
+
+        self.load_thanks_list()
+
         layout.addSpacing(15)
 
         layout.addWidget(styled_label(
@@ -58,6 +82,13 @@ class AboutPage(QWidget):
             rich=True
         ))
 
+        layout.addWidget(styled_label(
+            CaptionLabel,
+            self.tr('<br>贊助 20 元及以上即可出現在感謝名單中, 名單每個月更新一次<br><img src="img/wc_spon.JPG" width=300>'),
+            10,
+            rich=True
+        ))
+
     def get_cfg_path(self):
         app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
             os.path.dirname(sys.argv[0]))
@@ -70,3 +101,18 @@ class AboutPage(QWidget):
             if not cfg.has_section(section):
                 cfg.add_section(section)
         return cfg
+
+    def load_thanks_list(self):
+        url = "https://raw.githubusercontent.com/ElliotCHEN37/chunager/main/sp_thk.json"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                self.table.setRowCount(len(data))
+                for row, person in enumerate(data):
+                    name_item = QTableWidgetItem(person.get("name", ""))
+                    donate_item = QTableWidgetItem(person.get("donate", ""))
+                    self.table.setItem(row, 0, name_item)
+                    self.table.setItem(row, 1, donate_item)
+        except Exception as e:
+            print("載入感謝名單失敗：", e)

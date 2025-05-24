@@ -6,7 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
 from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from qfluentwidgets import LargeTitleLabel, PushButton, BodyLabel, LineEdit, TableWidget, PrimaryPushButton, ProgressBar
 import configparser
 from PIL import Image
@@ -20,6 +20,7 @@ def get_path(rel_path: str) -> str:
 class MusicScanner(QThread):
     scan_done = Signal(dict)
     progress = Signal(int)
+    error = Signal(str, str)
 
     def run(self):
         index_path = self.get_index_path()
@@ -32,24 +33,29 @@ class MusicScanner(QThread):
                     index_data = json.load(f)
                 last_opt_mtime = index_data.get("opt_last_modified", 0)
                 music_data = index_data.get("music_data", {})
-
                 current_opt_mtime = self.get_opt_mod_time()
 
                 if current_opt_mtime == last_opt_mtime:
                     need_rescan = False
             except Exception as e:
-                QMessageBox.critical(self, "讀取索引檔案錯誤", e)
+                self.error.emit("讀取索引檔案錯誤", str(e))
 
         if need_rescan:
             xml_paths = self.find_xmls()
             music_data = {}
 
             total = len(xml_paths)
+            if total == 0:
+                self.progress.emit(100)
+                self.scan_done.emit({})
+                return
+
             for idx, path in enumerate(xml_paths):
                 data = self.parse_xml(path)
                 music_data[data["music_id"]] = data
-                prog = int(((idx + 1) / total) * 100)
-                self.progress.emit(prog)
+
+                progress_percent = int(((idx + 1) / total) * 100)
+                self.progress.emit(progress_percent)
 
             current_opt_mtime = self.get_opt_mod_time()
             try:
@@ -59,8 +65,9 @@ class MusicScanner(QThread):
                         "music_data": music_data
                     }, f, ensure_ascii=False, indent=2)
             except Exception as e:
-                QMessageBox.critical(self, "寫入索引檔案錯誤", e)
+                self.error.emit("寫入索引檔案錯誤", str(e))
 
+        self.progress.emit(100)
         self.scan_done.emit(music_data)
 
     def get_cfg_path(self):
@@ -202,12 +209,93 @@ class MusicScanner(QThread):
             "fumens": charts
         }
 
+
+class ImageLoader(QThread):
+    image_loaded = Signal(int, QPixmap)
+    error_loading = Signal(int, str)
+
+    def __init__(self, row, path):
+        super().__init__()
+        self.row = row
+        self.path = path
+
+    def run(self):
+        try:
+            if not os.path.exists(self.path):
+                self.error_loading.emit(self.row, "檔案不存在")
+                return
+
+            img = Image.open(self.path)
+            img = img.convert("RGBA")
+            data = img.tobytes("raw", "RGBA")
+            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+            pixmap = QPixmap.fromImage(qimg)
+            self.image_loaded.emit(self.row, pixmap)
+        except Exception as e:
+            self.error_loading.emit(self.row, str(e))
+
+
+class FileCopyWorker(QThread):
+    copy_completed = Signal(str)
+    copy_failed = Signal(str)
+
+    def __init__(self, src_path, dst_path):
+        super().__init__()
+        self.src_path = src_path
+        self.dst_path = dst_path
+
+    def run(self):
+        try:
+            if not os.path.exists(self.src_path):
+                self.copy_failed.emit("來源檔案不存在")
+                return
+
+            dst_dir = os.path.dirname(self.dst_path)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+
+            shutil.copy(self.src_path, self.dst_path)
+            self.copy_completed.emit(f"已複製至: {self.dst_path}")
+        except Exception as e:
+            self.copy_failed.emit(f"複製失敗: {str(e)}")
+
+
+class IndexLoader(QThread):
+    index_loaded = Signal(dict, str)
+    index_error = Signal(str)
+
+    def __init__(self, index_path):
+        super().__init__()
+        self.index_path = index_path
+
+    def run(self):
+        try:
+            if not os.path.exists(self.index_path):
+                self.index_error.emit("索引檔案不存在")
+                return
+
+            with open(self.index_path, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+                music_data = index_data.get("music_data", {})
+
+            mtime = os.path.getmtime(self.index_path)
+            from datetime import datetime
+            timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+
+            self.index_loaded.emit(music_data, timestamp)
+        except Exception as e:
+            self.index_error.emit(f"讀取索引失敗: {str(e)}")
+
+
 class MusicPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("musicPage")
         self.scanned = False
         self.music_data_dict = {}
+        self.image_loaders = {}
+        self.pending_images = []
+        self.max_concurrent_images = 5
 
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignTop)
@@ -230,6 +318,10 @@ class MusicPage(QWidget):
         search_layout = QHBoxLayout()
         self.search_box = LineEdit(self)
         self.search_box.setPlaceholderText("搜尋音樂名稱...")
+        self.search_timer = QTimer()
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(self.filter_music)
+        self.search_box.textChanged.connect(self.on_search_text_changed)
         search_layout.addWidget(self.search_box)
 
         self.search_btn = PrimaryPushButton("搜尋")
@@ -266,6 +358,11 @@ class MusicPage(QWidget):
         self.scanner = MusicScanner()
         self.scanner.scan_done.connect(self.on_scan_done)
         self.scanner.progress.connect(self.update_progress)
+        self.scanner.error.connect(self.on_scanner_error)
+
+    def on_search_text_changed(self):
+        self.search_timer.stop()
+        self.search_timer.start(300)
 
     def update_progress(self, value):
         self.progress.setValue(value)
@@ -281,7 +378,13 @@ class MusicPage(QWidget):
         self.update_table(list(music_data.values()))
         self.status.hide()
         self.progress.hide()
+        self.update_index_status()
 
+    def on_scanner_error(self, title, message):
+        QMessageBox.critical(self, title, message)
+        self.status.setText("掃描失敗")
+
+    def update_index_status(self):
         index_path = self.scanner.get_index_path()
         if os.path.exists(index_path):
             mtime = os.path.getmtime(index_path)
@@ -300,16 +403,21 @@ class MusicPage(QWidget):
             data = list(self.music_data_dict.values())
         else:
             query = self.search_box.text().strip().lower()
-            data = [
-                d for _, d in self.music_data_dict.items()
-                if (query in d["music_id"].lower() or
-                    query in d["music_name"].lower() or
-                    query in d["artist_name"].lower())
-            ]
+            if not query:
+                data = list(self.music_data_dict.values())
+            else:
+                data = [
+                    d for _, d in self.music_data_dict.items()
+                    if (query in d["music_id"].lower() or
+                        query in d["music_name"].lower() or
+                        query in d["artist_name"].lower())
+                ]
 
         self.update_table(data)
 
     def update_table(self, data):
+        self.stop_all_image_loading()
+
         self.table.clearContents()
         self.table.setRowCount(len(data))
 
@@ -323,62 +431,95 @@ class MusicPage(QWidget):
             diff_text = ", ".join([f"{d['type']}: {d['level']}" for d in item["fumens"]])
             self.table.setItem(row, 6, QTableWidgetItem(diff_text))
 
-            img = self.load_dds(item["jacket_path"])
-            if img:
-                label = BodyLabel()
-                label.setPixmap(img.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                self.table.setCellWidget(row, 0, label)
-            else:
-                label = BodyLabel("無法加載封面")
-                self.table.setCellWidget(row, 0, label)
-
             self.table.setRowHeight(row, 128)
-            self.table.setColumnWidth(row, 128)
+            self.table.setColumnWidth(0, 128)
+
+            loading_label = BodyLabel("載入中...")
+            loading_label.setAlignment(Qt.AlignCenter)
+            self.table.setCellWidget(row, 0, loading_label)
+
+            self.pending_images.append((row, item["jacket_path"]))
 
             copy_btn = PushButton("提取")
             copy_btn.clicked.connect(lambda _, d=item: self.save_cover(d))
             self.table.setCellWidget(row, 7, copy_btn)
 
-    def load_dds(self, path):
-        if not os.path.exists(path):
-            return None
-        try:
-            img = Image.open(path)
-            img = img.convert("RGBA")
-            data = img.tobytes("raw", "RGBA")
-            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
-            return QPixmap.fromImage(qimg)
-        except Exception as e:
-            QMessageBox.critical(self, "讀取DDS封面失敗", f"路徑: {path}, 錯誤: {e}")
-            return None
+        self.start_image_loading()
+
+    def stop_all_image_loading(self):
+        for loader in self.image_loaders.values():
+            if loader.isRunning():
+                loader.terminate()
+                loader.wait()
+        self.image_loaders.clear()
+        self.pending_images.clear()
+
+    def start_image_loading(self):
+        while len(self.image_loaders) < self.max_concurrent_images and self.pending_images:
+            row, path = self.pending_images.pop(0)
+            self.load_image_async(row, path)
+
+    def load_image_async(self, row, path):
+        loader = ImageLoader(row, path)
+        loader.image_loaded.connect(self.on_image_loaded)
+        loader.error_loading.connect(self.on_image_error)
+        loader.finished.connect(lambda: self.on_image_loader_finished(row))
+
+        self.image_loaders[row] = loader
+        loader.start()
+
+    def on_image_loaded(self, row, pixmap):
+        if row < self.table.rowCount():
+            label = BodyLabel()
+            label.setPixmap(pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            label.setAlignment(Qt.AlignCenter)
+            self.table.setCellWidget(row, 0, label)
+
+    def on_image_error(self, row, error_msg):
+        if row < self.table.rowCount():
+            label = BodyLabel("無法載入")
+            label.setAlignment(Qt.AlignCenter)
+            self.table.setCellWidget(row, 0, label)
+
+    def on_image_loader_finished(self, row):
+        if row in self.image_loaders:
+            del self.image_loaders[row]
+
+        if self.pending_images:
+            next_row, next_path = self.pending_images.pop(0)
+            self.load_image_async(next_row, next_path)
 
     def save_cover(self, data):
         target = QFileDialog.getExistingDirectory(self, "選擇目標資料夾", "")
         if not target:
-            QMessageBox.critical(self, "錯誤", "未選擇任何資料夾")
             return
 
-        if not os.path.exists(target):
-            os.makedirs(target)
-
         src = data["jacket_path"]
-        if os.path.exists(src):
-            try:
-                dst = os.path.join(target, os.path.basename(src))
-                shutil.copy(src, dst)
-                QMessageBox.information(self, "成功", f"已複製至: {dst}")
-            except Exception as e:
-                QMessageBox.critical(self, "複製封面失敗", e)
-        else:
-            QMessageBox.warning(self, "封面檔案不存在", src)
+        dst = os.path.join(target, os.path.basename(src))
+
+        self.copy_worker = FileCopyWorker(src, dst)
+        self.copy_worker.copy_completed.connect(self.on_copy_completed)
+        self.copy_worker.copy_failed.connect(self.on_copy_failed)
+        self.copy_worker.start()
+
+    def on_copy_completed(self, message):
+        QMessageBox.information(self, "成功", message)
+
+    def on_copy_failed(self, error_msg):
+        QMessageBox.critical(self, "複製失敗", error_msg)
 
     def rebuild_index(self):
+        self.rebuild_btn.setEnabled(False)
+        self.reload_btn.setEnabled(False)
+
         index_path = self.scanner.get_index_path()
         if os.path.exists(index_path):
             try:
                 os.remove(index_path)
             except Exception as e:
                 QMessageBox.critical(self, "刪除索引失敗", f"無法刪除索引檔案:\n{str(e)}")
+                self.rebuild_btn.setEnabled(True)
+                self.reload_btn.setEnabled(True)
                 return
 
         self.progress.setValue(0)
@@ -386,28 +527,62 @@ class MusicPage(QWidget):
         self.status.setText("正在重新建立索引...")
         self.status.show()
         self.index_status.setText("索引狀態：重新建立中...")
-        self.scanned = False
+
+        self.stop_all_image_loading()
+
+        if not self.scanner.scan_done.connect(self.on_rebuild_done):
+            self.scanner.scan_done.disconnect()
+            self.scanner.scan_done.connect(self.on_rebuild_done)
+
         self.scanner.start()
 
+    def on_rebuild_done(self, music_data):
+        self.music_data_dict = music_data
+        self.update_table(list(music_data.values()))
+        self.status.hide()
+        self.progress.hide()
+        self.update_index_status()
+
+        self.rebuild_btn.setEnabled(True)
+        self.reload_btn.setEnabled(True)
+
+        self.scanner.scan_done.disconnect()
+        self.scanner.scan_done.connect(self.on_scan_done)
+
     def reload_index(self):
+        self.reload_btn.setEnabled(False)
+
         index_path = self.scanner.get_index_path()
         if not os.path.exists(index_path):
             QMessageBox.warning(self, "索引不存在", "尚未建立索引，請先使用「重建索引」。")
+            self.reload_btn.setEnabled(True)
             return
 
-        try:
-            with open(index_path, 'r', encoding='utf-8') as f:
-                index_data = json.load(f)
-                music_data = index_data.get("music_data", {})
-                self.music_data_dict = music_data
-                self.update_table(list(music_data.values()))
+        self.index_loader = IndexLoader(index_path)
+        self.index_loader.index_loaded.connect(self.on_index_loaded)
+        self.index_loader.index_error.connect(self.on_index_load_error)
+        self.index_loader.start()
 
-                mtime = os.path.getmtime(index_path)
-                from datetime import datetime
-                timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
-                self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+    def on_index_loaded(self, music_data, timestamp):
+        self.music_data_dict = music_data
+        self.update_table(list(music_data.values()))
+        self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+        self.reload_btn.setEnabled(True)
+        QMessageBox.information(self, "完成", "已成功重新載入索引。")
 
-                QMessageBox.information(self, "完成", "已成功重新載入索引。")
+    def on_index_load_error(self, error_msg):
+        QMessageBox.critical(self, "載入失敗", error_msg)
+        self.reload_btn.setEnabled(True)
 
-        except Exception as e:
-            QMessageBox.critical(self, "讀取索引失敗", str(e))
+    def closeEvent(self, event):
+        self.stop_all_image_loading()
+        if hasattr(self, 'copy_worker') and self.copy_worker.isRunning():
+            self.copy_worker.terminate()
+            self.copy_worker.wait()
+        if hasattr(self, 'index_loader') and self.index_loader.isRunning():
+            self.index_loader.terminate()
+            self.index_loader.wait()
+        if self.scanner.isRunning():
+            self.scanner.terminate()
+            self.scanner.wait()
+        event.accept()

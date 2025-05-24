@@ -2,10 +2,15 @@ import configparser
 import os
 import sys
 import webbrowser
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QHBoxLayout
+import requests
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QHBoxLayout, QMessageBox
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, LineEdit, PrimaryPushButton
+
+GITHUB_REPO_API = "https://api.github.com/repos/ElliotCHEN37/chunager/releases/latest"
+GITHUB_RELEASE_URL = "https://github.com/ElliotCHEN37/chunager/releases"
+CURRENT_VERSION = "v1.2"
 
 
 def get_path(rel_path: str) -> str:
@@ -19,6 +24,7 @@ class SettingPage(QWidget):
         self.setObjectName("configPage")
         self.cfg_path = self.get_cfg_path()
         self.cfg = self.load_cfg()
+        self.check_config()
         self.init_ui()
 
     def init_ui(self):
@@ -34,9 +40,10 @@ class SettingPage(QWidget):
         layout.addSpacing(10)
 
         layout.addWidget(StrongBodyLabel("檢查更新："))
-        update_btn = PrimaryPushButton(QIcon(get_path("img/web.svg")), "訪問GitHub發佈頁")
-        update_btn.clicked.connect(self.open_repo)
-        layout.addWidget(update_btn)
+        check_btn = PrimaryPushButton("檢查更新 (當前版本：" + CURRENT_VERSION + ")")
+        check_btn.clicked.connect(self.check_update)
+        layout.addWidget(check_btn)
+
         layout.addSpacing(10)
 
         layout.addWidget(StrongBodyLabel("選擇主題："))
@@ -60,21 +67,59 @@ class SettingPage(QWidget):
         st_layout.addWidget(st_btn)
         layout.addLayout(st_layout)
 
+    def check_update(self):
+        try:
+            response = requests.get(GITHUB_REPO_API, timeout=5)
+            if response.status_code == 200:
+                latest = response.json().get("tag_name", CURRENT_VERSION)
+                if latest > CURRENT_VERSION:
+                    reply = QMessageBox.question(
+                        self, "發現新版本", f"發現新版本 {latest}，是否前往下載？",
+                        QMessageBox.Yes | QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        webbrowser.open(GITHUB_RELEASE_URL)
+                else:
+                    QMessageBox.information(self, "已是最新", f"目前已是最新版本 {CURRENT_VERSION}。")
+            else:
+                QMessageBox.warning(self, "更新失敗", "無法取得更新資訊。")
+        except Exception as e:
+            QMessageBox.critical(self, "錯誤", f"檢查更新時發生錯誤：{str(e)}")
+
     def get_cfg_path(self):
-        if getattr(sys, 'frozen', False):
-            app_dir = os.path.dirname(sys.executable)
-        else:
-            app_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+        app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
+            os.path.dirname(sys.argv[0]))
         return os.path.join(app_dir, "config.ini")
 
     def load_cfg(self):
         cfg = configparser.ConfigParser()
         cfg.read(self.cfg_path, encoding="utf-8")
-        if not cfg.has_section("DISPLAY"):
-            cfg.add_section("DISPLAY")
-        if not cfg.has_section("GENERAL"):
-            cfg.add_section("GENERAL")
         return cfg
+
+    def check_config(self):
+        modified = False
+        if not self.cfg.has_section("DISPLAY"):
+            self.cfg.add_section("DISPLAY")
+            self.cfg.set("DISPLAY", "theme", "AUTO")
+            modified = True
+
+        if not self.cfg.has_section("GENERAL"):
+            self.cfg.add_section("GENERAL")
+            self.cfg.set("GENERAL", "version", CURRENT_VERSION)
+            self.cfg.set("GENERAL", "segatools_path", "")
+            modified = True
+        else:
+            current_cfg_version = self.cfg.get("GENERAL", "version", fallback="")
+            if current_cfg_version != CURRENT_VERSION:
+                self.cfg.set("GENERAL", "version", CURRENT_VERSION)
+                modified = True
+
+            if not self.cfg.has_option("GENERAL", "segatools_path"):
+                self.cfg.set("GENERAL", "segatools_path", "")
+                modified = True
+
+        if modified:
+            self.save_cfg()
 
     def save_cfg(self):
         with open(self.cfg_path, "w", encoding="utf-8") as file:
@@ -92,6 +137,3 @@ class SettingPage(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "選擇 segatools.ini", "", "SEGATOOLS配置檔 (segatools.ini)")
         if path:
             self.st_path.setText(path)
-
-    def open_repo(self):
-        webbrowser.open("https://github.com/ElliotCHEN37/chunager/releases")

@@ -1,12 +1,21 @@
+import configparser
+import os
+import sys
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from qfluentwidgets import LargeTitleLabel, StrongBodyLabel, CaptionLabel
 
+
 class AboutPage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("aboutPage")
+
+        self.cfg_path = self.get_cfg_path()
+        self.cfg = self.load_cfg()
+        self.current_version = self.cfg.get("GENERAL", "version")
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
@@ -39,7 +48,7 @@ class AboutPage(QWidget):
         layout.addWidget(styled_label(
             CaptionLabel,
             "作者：Elliot<br>"
-            "版本：1.1<br>"
+            f"版本：{self.current_version}<br>"
             'GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>',
             10,
             rich=True
@@ -56,3 +65,16 @@ class AboutPage(QWidget):
             10,
             rich=True
         ))
+
+    def get_cfg_path(self):
+        app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
+            os.path.dirname(sys.argv[0]))
+        return os.path.join(app_dir, "config.ini")
+
+    def load_cfg(self):
+        cfg = configparser.ConfigParser()
+        cfg.read(self.cfg_path, encoding="utf-8")
+        for section in ["DISPLAY", "GENERAL"]:
+            if not cfg.has_section(section):
+                cfg.add_section(section)
+        return cfg

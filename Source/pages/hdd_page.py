@@ -32,7 +32,7 @@ class HDDPage(QWidget):
 
         notice.setTitle("WOOPS")
         notice.ErrorIcon = IconWidget(QIcon(get_path("img/error.svg")))
-        notice.infoLabel = BodyLabel("請自行解密")
+        notice.infoLabel = BodyLabel("注意控制台輸出")
 
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()

@@ -19,7 +19,7 @@ def get_path(rel_path: str) -> str:
 
 
 class ImageLoaderThread(QThread):
-    image_loaded = Signal(int, QPixmap)  # row, pixmap
+    image_loaded = Signal(int, QPixmap)
 
     def __init__(self, row, dds_path):
         super().__init__()
@@ -41,7 +41,6 @@ class ImageLoaderThread(QThread):
             qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
             return QPixmap.fromImage(qimg)
         except Exception:
-            # 尝试备用路径
             base, ext = os.path.splitext(dds_path)
             alt_path = base + (".DDS" if ext.lower() == ".dds" else ".dds")
             if os.path.exists(alt_path):
@@ -56,7 +55,7 @@ class ImageLoaderThread(QThread):
 
 
 class FileOperationThread(QThread):
-    operation_completed = Signal(bool, str)  # success, message
+    operation_completed = Signal(bool, str)
 
     def __init__(self, operation_type, **kwargs):
         super().__init__()
@@ -77,29 +76,29 @@ class FileOperationThread(QThread):
             target_dir = self.kwargs['target_dir']
 
             if not os.path.exists(img_path):
-                self.operation_completed.emit(False, f"chara image not fuond: {img_path}")
+                self.operation_completed.emit(False, self.tr(f"未找到角色圖像: {img_path}"))
                 return
 
             target = os.path.join(target_dir, os.path.basename(img_path))
             shutil.copy(img_path, target)
-            self.operation_completed.emit(True, f"copied: {target}")
+            self.operation_completed.emit(True, self.tr(f"已複製: {target}"))
         except Exception as e:
-            self.operation_completed.emit(False, f"cpoy failed: {str(e)}")
+            self.operation_completed.emit(False, self.tr(f"複製失敗: {str(e)}"))
 
     def rebuild_index(self):
         try:
             index_path = self.kwargs['index_path']
             if os.path.exists(index_path):
                 os.remove(index_path)
-            self.operation_completed.emit(True, "index deleted, rebuilding")
+            self.operation_completed.emit(True, self.tr("已刪除索引, 準備重建"))
         except Exception as e:
-            self.operation_completed.emit(False, f"cannot delete index file: {str(e)}")
+            self.operation_completed.emit(False, self.tr(f"無法刪除索引: {str(e)}"))
 
     def reload_index(self):
         try:
             index_path = self.kwargs['index_path']
             if not os.path.exists(index_path):
-                self.operation_completed.emit(False, "index is not existing, rebuild first")
+                self.operation_completed.emit(False, self.tr("索引不存在, 請先建立"))
                 return
 
             with open(index_path, 'r', encoding='utf-8') as f:
@@ -110,9 +109,9 @@ class FileOperationThread(QThread):
             from datetime import datetime
             timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
 
-            self.operation_completed.emit(True, f"reload_success|{json.dumps(chara_data)}|{timestamp}")
+            self.operation_completed.emit(True, self.tr(f"成功重載|{json.dumps(chara_data)}|{timestamp}"))
         except Exception as e:
-            self.operation_completed.emit(False, f"reading index failed: {str(e)}")
+            self.operation_completed.emit(False, self.tr(f"索引讀取失敗: {str(e)}"))
 
 
 class CharaSearchThread(QThread):
@@ -123,7 +122,7 @@ class CharaSearchThread(QThread):
 
     def run(self):
         try:
-            self.status_update.emit("checking index")
+            self.status_update.emit(self.tr("檢查索引"))
             index_path = self.get_index_path()
             need_rescan = True
             chara_data = {}
@@ -139,19 +138,19 @@ class CharaSearchThread(QThread):
 
                     if current_opt_mtime == last_opt_mtime:
                         need_rescan = False
-                        self.status_update.emit("using existing index")
+                        self.status_update.emit(self.tr("使用現存索引"))
                 except Exception as e:
-                    self.error.emit("reading index failed", str(e))
+                    self.error.emit(self.tr("索引讀取失敗"), str(e))
                     return
 
             if need_rescan:
-                self.status_update.emit("scanning XML files")
+                self.status_update.emit(self.tr("掃描XML檔案"))
                 xml_paths = self.find_xmls()
                 chara_data = {}
 
                 total = len(xml_paths)
                 if total == 0:
-                    self.status_update.emit("XML files not found")
+                    self.status_update.emit(self.tr("找不到XML檔案"))
                     self.found.emit({})
                     return
 
@@ -161,12 +160,12 @@ class CharaSearchThread(QThread):
                         chara_data[data["chara_id"]] = data
                         progress_val = int(((idx + 1) / total) * 100)
                         self.progress.emit(progress_val)
-                        self.status_update.emit(f"processing: {data['chara_name']} ({idx + 1}/{total})")
+                        self.status_update.emit(self.tr(f"處理中: {data['chara_name']} ({idx + 1}/{total})"))
                     except Exception as e:
-                        print(f"parsing xml failed: {xml_path}, error: {e}")
+                        print(self.tr(f"XML檔案解析失敗: {xml_path}, 錯誤: {e}"))
                         continue
 
-                self.status_update.emit("saving index...")
+                self.status_update.emit(self.tr("儲存索引"))
                 current_opt_mtime = self.get_opt_last_modified_time()
                 try:
                     with open(index_path, 'w', encoding='utf-8') as f:
@@ -175,13 +174,13 @@ class CharaSearchThread(QThread):
                             "chara_data": chara_data
                         }, f, ensure_ascii=False, indent=2)
                 except Exception as e:
-                    self.error.emit("writing index failed", str(e))
+                    self.error.emit(self.tr("寫入索引錯誤"), str(e))
                     return
 
-            self.status_update.emit("done")
+            self.status_update.emit(self.tr("完成"))
             self.found.emit(chara_data)
         except Exception as e:
-            self.error.emit("searching failed", str(e))
+            self.error.emit(self.tr("搜尋失敗"), str(e))
 
     def get_cfg_path(self):
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(

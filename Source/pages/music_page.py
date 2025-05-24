@@ -62,22 +62,22 @@ class FileOperationThread(QThread):
         img_path = self.kwargs['img_path']
         target_dir = self.kwargs['target_dir']
         if not os.path.exists(img_path):
-            self.operation_completed.emit(False, f"jaket not exist: {img_path}")
+            self.operation_completed.emit(False, self.tr(f"封面不存在: {img_path}"))
             return
         target = os.path.join(target_dir, os.path.basename(img_path))
         shutil.copy(img_path, target)
-        self.operation_completed.emit(True, f"copied: {target}")
+        self.operation_completed.emit(True, self.tr(f"已複製: {target}"))
 
     def _rebuild_index(self):
         index_path = self.kwargs['index_path']
         if os.path.exists(index_path):
             os.remove(index_path)
-        self.operation_completed.emit(True, "index deleted, rebuilding")
+        self.operation_completed.emit(True, self.tr("已刪除索引, 準備重建"))
 
     def _reload_index(self):
         index_path = self.kwargs['index_path']
         if not os.path.exists(index_path):
-            self.operation_completed.emit(False, "index not exist, rebuild first")
+            self.operation_completed.emit(False, self.tr("索引不存在, 請先建立"))
             return
         with open(index_path, 'r', encoding='utf-8') as f:
             index_data = json.load(f)
@@ -94,7 +94,7 @@ class MusicSearchThread(QThread):
 
     def run(self):
         try:
-            self.status_update.emit("checking index")
+            self.status_update.emit(self.tr("檢查索引"))
             index_path = self.get_index_path()
             need_rescan = True
             music_data = {}
@@ -107,17 +107,17 @@ class MusicSearchThread(QThread):
                     current_opt_mtime = self.get_opt_last_modified_time()
                     if current_opt_mtime == last_opt_mtime:
                         need_rescan = False
-                        self.status_update.emit("using existing index")
+                        self.status_update.emit(self.tr("使用現存索引"))
                 except Exception as e:
-                    self.error.emit("error when reading index", str(e))
+                    self.error.emit(self.tr("索引讀取失敗"), str(e))
                     return
             if need_rescan:
-                self.status_update.emit("scanning XML files")
+                self.status_update.emit(self.tr("掃描XML檔案中"))
                 xml_paths = self.find_xmls()
                 music_data = {}
                 total = len(xml_paths)
                 if total == 0:
-                    self.status_update.emit("XML not fouond")
+                    self.status_update.emit(self.tr("未找到XML檔案"))
                     self.found.emit({})
                     return
                 for idx, xml_path in enumerate(xml_paths):
@@ -126,11 +126,11 @@ class MusicSearchThread(QThread):
                         music_data[data["music_id"]] = data
                         progress_val = int(((idx + 1) / total) * 100)
                         self.progress.emit(progress_val)
-                        self.status_update.emit(f"processing: {data['music_name']} ({idx + 1}/{total})")
+                        self.status_update.emit(self.tr(f"處理中: {data['music_name']} ({idx + 1}/{total})"))
                     except Exception as e:
-                        print(f"parsing xml failed: {xml_path}, error: {e}")
+                        print(self.tr(f"XML處理失敗: {xml_path}, error: {e}"))
                         continue
-                self.status_update.emit("saving index")
+                self.status_update.emit(self.tr("儲存索引"))
                 current_opt_mtime = self.get_opt_last_modified_time()
                 try:
                     with open(index_path, 'w', encoding='utf-8') as f:
@@ -139,12 +139,12 @@ class MusicSearchThread(QThread):
                             "music_data": music_data
                         }, f, ensure_ascii=False, indent=2)
                 except Exception as e:
-                    self.error.emit("writing xml failed", str(e))
+                    self.error.emit(self.tr("寫入XML失敗"), str(e))
                     return
-            self.status_update.emit("done")
+            self.status_update.emit(self.tr("已完成"))
             self.found.emit(music_data)
         except Exception as e:
-            self.error.emit("search failed", str(e))
+            self.error.emit(self.tr("搜尋失敗"), str(e))
 
     def get_cfg_path(self):
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
@@ -222,7 +222,7 @@ class MusicSearchThread(QThread):
                     found.append(xml_path)
         return found
 
-    def xml_text(self, root, path, default="unknown"):
+    def xml_text(self, root, path, default="未知"):
         elem = root.find(path)
         return elem.text if elem is not None else default
 

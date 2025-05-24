@@ -181,4 +181,3 @@ class SettingPage(QWidget):
         self.qm_path.clear()
         self.cfg.set("DISPLAY", "translation_path", "")
         self.save_cfg()
-        QMessageBox.information(self, self.tr("翻譯重置"), self.tr("已重置翻譯檔設定，下次啟動將恢復為預設語言。"))

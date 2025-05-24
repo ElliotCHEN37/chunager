@@ -56,5 +56,5 @@ class PFMManualPage(QWidget):
         layout.addWidget(notice)
 
     def open_manual(self):
-        QMessageBox.information(self, "請解密兩次", "看看終端輸出")
+        QMessageBox.information(self, "已加密", "使用Base64解密兩次即可")
         print("YUhSMGNITTZMeTl3WlhKbWIzSnRZV2t1WlhacGJHeGxZV3RsY2k1amIyMHZiV0Z1ZFdGc0wyZGhiV1Z6TDJOb2RXNXBkR2h0TDNObGRIVndMdz09")

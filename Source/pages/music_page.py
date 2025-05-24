@@ -223,6 +223,10 @@ class MusicPage(QWidget):
         self.progress.setRange(0, 100)
         self.layout.addWidget(self.progress)
 
+        self.index_status = BodyLabel("索引狀態：尚未建立")
+        self.index_status.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.index_status)
+
         search_layout = QHBoxLayout()
         self.search_box = LineEdit(self)
         self.search_box.setPlaceholderText("搜尋音樂名稱...")
@@ -237,6 +241,18 @@ class MusicPage(QWidget):
         search_layout.addWidget(self.reset_btn)
 
         self.layout.addLayout(search_layout)
+
+        btn_layout = QHBoxLayout()
+
+        self.rebuild_btn = PrimaryPushButton("重建索引")
+        self.rebuild_btn.clicked.connect(self.rebuild_index)
+        btn_layout.addWidget(self.rebuild_btn)
+
+        self.reload_btn = PrimaryPushButton("重新載入")
+        self.reload_btn.clicked.connect(self.reload_index)
+        btn_layout.addWidget(self.reload_btn)
+
+        self.layout.addLayout(btn_layout)
 
         self.table = TableWidget(self)
         self.table.setColumnCount(8)
@@ -265,6 +281,15 @@ class MusicPage(QWidget):
         self.update_table(list(music_data.values()))
         self.status.hide()
         self.progress.hide()
+
+        index_path = self.scanner.get_index_path()
+        if os.path.exists(index_path):
+            mtime = os.path.getmtime(index_path)
+            from datetime import datetime
+            timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+            self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+        else:
+            self.index_status.setText("索引狀態：尚未建立")
 
     def reset_filter(self):
         self.search_box.clear()
@@ -346,3 +371,43 @@ class MusicPage(QWidget):
                 QMessageBox.critical(self, "複製封面失敗", e)
         else:
             QMessageBox.warning(self, "封面檔案不存在", src)
+
+    def rebuild_index(self):
+        index_path = self.scanner.get_index_path()
+        if os.path.exists(index_path):
+            try:
+                os.remove(index_path)
+            except Exception as e:
+                QMessageBox.critical(self, "刪除索引失敗", f"無法刪除索引檔案:\n{str(e)}")
+                return
+
+        self.progress.setValue(0)
+        self.progress.show()
+        self.status.setText("正在重新建立索引...")
+        self.status.show()
+        self.index_status.setText("索引狀態：重新建立中...")
+        self.scanned = False
+        self.scanner.start()
+
+    def reload_index(self):
+        index_path = self.scanner.get_index_path()
+        if not os.path.exists(index_path):
+            QMessageBox.warning(self, "索引不存在", "尚未建立索引，請先使用「重建索引」。")
+            return
+
+        try:
+            with open(index_path, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+                music_data = index_data.get("music_data", {})
+                self.music_data_dict = music_data
+                self.update_table(list(music_data.values()))
+
+                mtime = os.path.getmtime(index_path)
+                from datetime import datetime
+                timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                self.index_status.setText(f"索引狀態：最後更新於 {timestamp}")
+
+                QMessageBox.information(self, "完成", "已成功重新載入索引。")
+
+        except Exception as e:
+            QMessageBox.critical(self, "讀取索引失敗", str(e))

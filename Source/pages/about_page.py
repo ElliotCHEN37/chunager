@@ -48,15 +48,15 @@ class AboutPage(QWidget):
                 label.setOpenExternalLinks(True)
             return label
 
-        layout.addWidget(styled_label(LargeTitleLabel, "關於 CHUNAGER", 20))
+        layout.addWidget(styled_label(LargeTitleLabel, self.tr("關於 CHUNAGER"), 20))
         layout.addSpacing(10)
 
-        layout.addWidget(styled_label(StrongBodyLabel, "感謝名單", 12))
+        layout.addWidget(styled_label(StrongBodyLabel, self.tr("感謝名單"), 12))
 
         self.table = TableWidget()
         self.table.setColumnCount(2)
         self.table.setRowCount(0)
-        self.table.setHorizontalHeaderLabels(["名稱", "贊助金額"])
+        self.table.setHorizontalHeaderLabels([self.tr("名稱"), self.tr("贊助金額")])
         self.table.setEditTriggers(TableWidget.NoEditTriggers)
         self.table.setSelectionMode(TableWidget.NoSelection)
         self.table.horizontalHeader().setStretchLastSection(True)

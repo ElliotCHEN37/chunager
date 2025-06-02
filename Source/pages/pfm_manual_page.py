@@ -1,9 +1,10 @@
 import os
 import sys
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from qfluentwidgets import PrimaryPushButton, HeaderCardWidget, BodyLabel, LargeTitleLabel, IconWidget
+import webbrowser
 
 def get_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
@@ -31,7 +32,7 @@ class PFMManualPage(QWidget):
 
         notice.setTitle(self.tr("注意"))
         notice.ErrorIcon = IconWidget(QIcon(get_path("img/error.svg")))
-        notice.infoLabel = BodyLabel(self.tr("注意控制台輸出"))
+        notice.infoLabel = BodyLabel(self.tr("將打開外部連結"))
 
         notice.vBoxLayout = QVBoxLayout()
         notice.hBoxLayout = QHBoxLayout()
@@ -55,5 +56,4 @@ class PFMManualPage(QWidget):
         layout.addWidget(notice)
 
     def open_manual(self):
-        QMessageBox.information(self, self.tr("已加密"), self.tr("使用Base64解密兩次即可"))
-        print("YUhSMGNITTZMeTl3WlhKbWIzSnRZV2t1WlhacGJHeGxZV3RsY2k1amIyMHZiV0Z1ZFdGc0wyZGhiV1Z6TDJOb2RXNXBkR2h0TDNObGRIVndMdz09")
+        webbrowser.open("https://performai.evilleaker.com/manual/")

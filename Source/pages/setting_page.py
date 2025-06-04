@@ -10,7 +10,7 @@ from qfluentwidgets import ComboBox, StrongBodyLabel, TitleLabel, LineEdit, Prim
 
 GITHUB_REPO_API = "https://api.github.com/repos/ElliotCHEN37/chunager/releases/latest"
 GITHUB_RELEASE_URL = "https://github.com/ElliotCHEN37/chunager/releases"
-CURRENT_VERSION = "v1.2.3"
+CURRENT_VERSION = "v1.3"
 
 
 def get_path(rel_path: str) -> str:

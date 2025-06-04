@@ -2,11 +2,10 @@ import configparser
 import os
 import sys
 
-import requests
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QTableWidgetItem
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from qfluentwidgets import LargeTitleLabel, StrongBodyLabel, CaptionLabel, TableWidget
+from qfluentwidgets import LargeTitleLabel, CaptionLabel
 
 def get_path(relative_path: str) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
@@ -21,19 +20,10 @@ class AboutPage(QWidget):
         self.cfg = self.load_cfg()
         self.current_version = self.cfg.get("GENERAL", "version")
 
-        scroll = QScrollArea(self)
-        scroll.setWidgetResizable(True)
-
-        inner = QWidget()
-        layout = QVBoxLayout(inner)
+        layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
 
         layout.setAlignment(Qt.AlignTop)
-
-        scroll.setWidget(inner)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(scroll)
 
         def styled_label(label_class, text, point_size, rich=False):
             label = label_class(text)
@@ -51,22 +41,6 @@ class AboutPage(QWidget):
         layout.addWidget(styled_label(LargeTitleLabel, self.tr("關於 CHUNAGER"), 20))
         layout.addSpacing(10)
 
-        layout.addWidget(styled_label(StrongBodyLabel, self.tr("感謝名單"), 12))
-
-        self.table = TableWidget()
-        self.table.setColumnCount(2)
-        self.table.setRowCount(0)
-        self.table.setHorizontalHeaderLabels([self.tr("名稱"), self.tr("贊助金額")])
-        self.table.setEditTriggers(TableWidget.NoEditTriggers)
-        self.table.setSelectionMode(TableWidget.NoSelection)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.verticalHeader().setVisible(False)
-        layout.addWidget(self.table)
-
-        self.load_thanks_list()
-
-        layout.addSpacing(15)
-
         layout.addWidget(styled_label(
             CaptionLabel,
             self.tr(f'作者：Elliot<br>版本：{self.current_version}<br>GitHub：<a href="https://github.com/ElliotCHEN37/chunager">https://github.com/ElliotCHEN37/chunager</a>'),
@@ -82,12 +56,12 @@ class AboutPage(QWidget):
             rich=True
         ))
 
-        layout.addWidget(styled_label(
+        '''layout.addWidget(styled_label(
             CaptionLabel,
-            self.tr(f'<br>贊助 20 元及以上即可出現在感謝名單中, 名單每個月更新一次<br><img src="{get_path("img/wc_spon.JPG")}" width=300 />'),
+            self.tr(f'<br>歡迎贊助<br><img src="{get_path("img/wc_spon.JPG")}" width=300 />'),
             10,
             rich=True
-        ))
+        ))'''
 
     def get_cfg_path(self):
         app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(
@@ -101,18 +75,3 @@ class AboutPage(QWidget):
             if not cfg.has_section(section):
                 cfg.add_section(section)
         return cfg
-
-    def load_thanks_list(self):
-        url = "https://raw.githubusercontent.com/ElliotCHEN37/chunager/main/sp_thk.json"
-        try:
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                self.table.setRowCount(len(data))
-                for row, person in enumerate(data):
-                    name_item = QTableWidgetItem(person.get("name", ""))
-                    donate_item = QTableWidgetItem(person.get("donate", ""))
-                    self.table.setItem(row, 0, name_item)
-                    self.table.setItem(row, 1, donate_item)
-        except Exception as e:
-            print("載入感謝名單失敗：", e)

@@ -307,8 +307,10 @@ class MusicPage(QWidget):
         btn_layout.addWidget(self.reload_btn)
         self.layout.addLayout(btn_layout)
         self.table = TableWidget(self)
-        self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels([self.tr("封面"), self.tr("音樂ID"), self.tr("名稱"), self.tr("曲師"), self.tr("分類"), self.tr("日期"), self.tr("可用難度"), self.tr("提取封面")])
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels([self.tr("封面"), self.tr("ID"), self.tr("名稱"),
+                                              self.tr("曲師"), self.tr("分類"), self.tr("日期"),
+                                              self.tr("可用難度"), self.tr("提取封面"), self.tr("譜面資料夾"), self.tr("樂曲資料夾")])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSortingEnabled(True)
         self.layout.addWidget(self.table)
@@ -400,6 +402,12 @@ class MusicPage(QWidget):
             copy_btn = PushButton(self.tr("提取"))
             copy_btn.clicked.connect(lambda _, d=data: self.extract_image(d))
             self.table.setCellWidget(row, 7, copy_btn)
+            humen_btn = PushButton(self.tr("開啟"))
+            humen_btn.clicked.connect(lambda _, d=data: self.open_humen(d))
+            self.table.setCellWidget(row, 8, humen_btn)
+            open_btn = PushButton(self.tr("開啟"))
+            open_btn.clicked.connect(lambda _, d=data: self.open_cuefile(d))
+            self.table.setCellWidget(row, 9, open_btn)
 
     def load_image_async(self, row, img_path):
         loader = ImageLoaderThread(row, img_path)
@@ -507,3 +515,34 @@ class MusicPage(QWidget):
             self.current_file_operation.terminate()
             self.current_file_operation.wait()
         event.accept()
+
+    def open_humen(self, data):
+        folder = os.path.dirname(data["jacket_path"])
+        if not os.path.exists(folder):
+            QMessageBox.warning(self, self.tr("錯誤"), self.tr("找不到資料夾"))
+            return
+        try:
+            os.startfile(folder)
+        except Exception as e:
+            QMessageBox.critical(self, self.tr("錯誤"), str(e))
+
+    def open_cuefile(self, data):
+        music_id = data.get("music_id", "")
+        if not music_id.isdigit():
+            QMessageBox.warning(self, self.tr("錯誤"), self.tr("無效的樂曲 ID"))
+            return
+
+        jacket_path = data.get("jacket_path", "")
+        if not os.path.exists(jacket_path):
+            QMessageBox.warning(self, self.tr("錯誤"), self.tr("封面路徑不存在"))
+            return
+
+        valid_id = music_id.zfill(6)
+
+        base_dir = os.path.abspath(os.path.join(jacket_path, "..", "..", "..", "cueFile"))
+        cue_dir = os.path.join(base_dir, f"cueFile{valid_id}")
+
+        if os.path.exists(cue_dir):
+            os.startfile(cue_dir)
+        else:
+            QMessageBox.warning(self, self.tr("錯誤"), self.tr(f"找不到 cueFile 資料夾：{cue_dir}"))

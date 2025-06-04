@@ -35,12 +35,6 @@ CHUNAGER 是一款針對 CHUNITHM HDD (SDHD 2.30.00 VERSE) 製作的管理工具
 
 ---
 
-## 贊助
-資助超過20元即可出現在感謝名單內, 名單每月更新<br>
-<img src="Source/img/wc_spon.JPG" width=300>
-
----
-
 ## 免則聲明
 請遵守當地法律使用。<br>
 本程式為個人開發，與任何和 Evil Leaker、SEGA、CHUNITHM 官方團隊或相關人物及事項無任何關係。
